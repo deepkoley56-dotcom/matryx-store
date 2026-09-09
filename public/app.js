@@ -177,20 +177,18 @@ function renderProducts() {
 
             ${planHTML}
 
-            <p class="muted">
-              Stock: ${p.stock}
-            </p>
+            <div class="productStatus ${p.active ? "online" : "offline"}">
+              <span class="statusDot"></span>
+              <span>STATUS:</span>
+              <b>${p.active ? "ONLINE" : "OFFLINE"}</b>
+            </div>
 
             <button
               class="primary"
-              ${p.stock < 1 ? "disabled" : ""}
+              ${!p.active ? "disabled" : ""}
               onclick="addCart(${p.id})"
             >
-              ${
-                p.stock < 1
-                  ? "OUT OF STOCK"
-                  : "ADD TO CART"
-              }
+              ${p.active ? "ADD TO CART" : "OFFLINE"}
             </button>
 
           </div>
@@ -250,6 +248,11 @@ function addCart(id) {
 
   if (!p) return;
 
+  if (!p.active) {
+    alert("This product is currently offline.");
+    return;
+  }
+
   const plan =
     getSelectedPlan(id);
 
@@ -262,10 +265,7 @@ function addCart(id) {
   );
 
   if (x) {
-    x.qty = Math.min(
-      x.qty + 1,
-      p.stock
-    );
+    x.qty += 1;
   } else {
     cart.push({
       key,
@@ -714,11 +714,10 @@ async function loadAdminProducts() {
   <small id="pvStatus">Select a video to upload</small>
 </div>
 
-      <input
-        id="ps"
-        type="number"
-        placeholder="Stock"
-      >
+      <select id="ps">
+        <option value="true" selected>ONLINE</option>
+        <option value="false">OFFLINE</option>
+      </select>
 
       <textarea
         id="plans"
@@ -762,8 +761,9 @@ async function loadAdminProducts() {
         }
       </div>
 
-      <div class="muted">
-        Stock: ${p.stock}
+      <div class="adminProductStatus ${p.active ? "online" : "offline"}">
+        <span class="statusDot"></span>
+        STATUS: <b>${p.active ? "ONLINE" : "OFFLINE"}</b>
         ${
           p.video
             ? " · 🎬 Video added"
@@ -856,10 +856,10 @@ async function createProduct() {
         description: $("pd").value,
         image: $("pi").value,
         video: videoUrl,
-        stock: $("ps").value,
+        stock: 999999,
         plans,
         price: plans[0]?.price || 0,
-        active: true
+        active: $("ps").value === "true"
       })
     });
 
@@ -926,12 +926,10 @@ function editProduct(p) {
         </small>
       </div>
 
-      <input
-        id="es"
-        type="number"
-        value="${p.stock}"
-        placeholder="Stock"
-      >
+      <select id="es">
+        <option value="true" ${p.active ? "selected" : ""}>ONLINE</option>
+        <option value="false" ${!p.active ? "selected" : ""}>OFFLINE</option>
+      </select>
 
       <textarea
         id="eplans"
@@ -1004,10 +1002,10 @@ async function updateProduct(id) {
           description: $("ed").value,
           image: $("ei").value,
           video: videoUrl,
-          stock: $("es").value,
+          stock: 999999,
           plans,
           price: plans[0]?.price || 0,
-          active: true
+          active: $("es").value === "true"
         })
       }
     );
