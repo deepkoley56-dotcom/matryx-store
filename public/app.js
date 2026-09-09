@@ -163,6 +163,12 @@ function renderProducts() {
           data-selected-plan="0"
         >
 
+          ${
+            p.tag
+              ? `<div class="productTag">${esc(p.tag)}</div>`
+              : ""
+          }
+
           ${mediaHTML}
 
           <div class="cardBody">
@@ -719,6 +725,12 @@ async function loadAdminProducts() {
         <option value="false">OFFLINE</option>
       </select>
 
+      <input
+        id="ptag"
+        placeholder="Product Tag — e.g. BEST VALUE"
+        maxlength="30"
+      >
+
       <textarea
         id="plans"
         placeholder="Plans - one per line&#10;Example:&#10;1 Hour | 50&#10;1 Day | 100&#10;7 Days | 300&#10;30 Days | 500"
@@ -859,7 +871,8 @@ async function createProduct() {
         stock: 999999,
         plans,
         price: plans[0]?.price || 0,
-        active: $("ps").value === "true"
+        active: $("ps").value === "true",
+        tag: $("ptag").value.trim()
       })
     });
 
@@ -930,6 +943,13 @@ function editProduct(p) {
         <option value="true" ${p.active ? "selected" : ""}>ONLINE</option>
         <option value="false" ${!p.active ? "selected" : ""}>OFFLINE</option>
       </select>
+
+      <input
+        id="etag"
+        value="${escAttr(p.tag || "")}"
+        placeholder="Product Tag — e.g. EDITOR CHOICE"
+        maxlength="30"
+      >
 
       <textarea
         id="eplans"
@@ -1005,7 +1025,8 @@ async function updateProduct(id) {
           stock: 999999,
           plans,
           price: plans[0]?.price || 0,
-          active: $("es").value === "true"
+          active: $("es").value === "true",
+          tag: $("etag").value.trim()
         })
       }
     );

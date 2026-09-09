@@ -54,6 +54,7 @@ async function initDb() {
       active BOOLEAN NOT NULL DEFAULT TRUE,
       video TEXT DEFAULT '',
       plans JSONB NOT NULL DEFAULT '[]'::jsonb,
+      tag TEXT DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
@@ -77,6 +78,9 @@ async function initDb() {
 
     ALTER TABLE products
       ADD COLUMN IF NOT EXISTS plans JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+    ALTER TABLE products
+      ADD COLUMN IF NOT EXISTS tag TEXT DEFAULT '';
 
     ALTER TABLE orders
       ADD COLUMN IF NOT EXISTS delivery_key TEXT DEFAULT '';
@@ -271,7 +275,8 @@ app.post("/api/admin/products", auth, async (req, res) => {
       stock,
       video,
       plans,
-      active = true
+      active = true,
+      tag = ""
     } = req.body;
 
     const cleanedPlans = cleanPlans(plans);
@@ -288,8 +293,8 @@ app.post("/api/admin/products", auth, async (req, res) => {
 
     const r = await pool.query(
       `INSERT INTO products
-       (name, description, price, image, stock, video, plans, active)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       (name, description, price, image, stock, video, plans, active, tag)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        RETURNING *`,
       [
         name,
@@ -299,7 +304,8 @@ app.post("/api/admin/products", auth, async (req, res) => {
         Math.max(0, parseInt(stock) || 0),
         video || "",
         JSON.stringify(cleanedPlans),
-        !!active
+        !!active,
+        String(tag || "").trim()
       ]
     );
 
@@ -323,7 +329,8 @@ app.put("/api/admin/products/:id", auth, async (req, res) => {
       stock,
       video,
       plans,
-      active = true
+      active = true,
+      tag = ""
     } = req.body;
 
     const cleanedPlans = cleanPlans(plans);
@@ -347,8 +354,9 @@ app.put("/api/admin/products/:id", auth, async (req, res) => {
            stock=$5,
            video=$6,
            plans=$7,
-           active=$8
-       WHERE id=$9
+           active=$8,
+           tag=$9
+       WHERE id=$10
        RETURNING *`,
       [
         name,
@@ -359,6 +367,7 @@ app.put("/api/admin/products/:id", auth, async (req, res) => {
         video || "",
         JSON.stringify(cleanedPlans),
         !!active,
+        String(tag || "").trim(),
         req.params.id
       ]
     );
