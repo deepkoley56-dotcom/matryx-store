@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MATRYX STORE</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo">M</span><span id="storeName">MATRYX STORE</span></div>
+  <nav><button onclick="showShop()">STORE</button><button onclick="openCart()">CART <b id="cartCount">0</b></button><button onclick="openAdmin()">ADMIN</button></nav>
+</header>
+
+<main>
+<section id="shopView">
+  <div class="hero"><p class="eyebrow">PREMIUM DIGITAL STORE</p><h1>Buy directly from <span>MATRYX</span></h1><p>Choose your item, checkout with UPI and send the order instantly on WhatsApp.</p></div>
+  <div id="products" class="grid"></div>
+</section>
+
+<section id="cartView" class="hidden">
+  <div class="sectionTitle"><h2>Your Cart</h2><button onclick="showShop()">← Continue Shopping</button></div>
+  <div id="cartItems"></div>
+  <div class="checkout">
+    <h3>Checkout</h3>
+    <div class="formgrid">
+      <input id="cName" placeholder="Full name">
+      <input id="cPhone" placeholder="Phone number">
+      <textarea id="cAddress" placeholder="Address / delivery details"></textarea>
+      <input id="cTxn" placeholder="UPI transaction ID (after payment)">
+      <textarea id="cNotes" placeholder="Order notes (optional)"></textarea>
+    </div>
+    <div class="paybox">
+      <div><strong>UPI ID:</strong> <span id="upiText">Not configured</span></div>
+      <p>Pay using your UPI app, then enter the transaction ID above.</p>
+      <button class="primary" onclick="payUPI()">OPEN UPI PAYMENT</button>
+    </div>
+    <div class="total">Total: <span id="cartTotal">₹0.00</span></div>
+    <button class="primary big" onclick="placeOrder()">PLACE ORDER + WHATSAPP</button>
+    <div id="orderResult"></div>
+  </div>
+</section>
+
+<section id="adminView" class="hidden">
+  <div id="adminLogin">
+    <div class="adminCard"><h2>Admin Login</h2><input id="aUser" placeholder="Username"><input id="aPass" type="password" placeholder="Password"><button class="primary" onclick="adminLogin()">LOGIN</button><p id="adminMsg"></p></div>
+  </div>
+  <div id="dashboard" class="hidden">
+    <div class="sectionTitle"><h2>Admin Dashboard</h2><button onclick="adminLogout()">LOGOUT</button></div>
+    <div class="adminTabs"><button onclick="adminTab('products')">PRODUCTS</button><button onclick="adminTab('orders')">ORDERS</button></div>
+    <div id="productAdmin"></div><div id="orderAdmin" class="hidden"></div>
+  </div>
+</section>
+</main>
+
+<div id="modal" class="modal hidden"><div class="modalBox"><button class="close" onclick="closeModal()">×</button><div id="modalContent"></div></div></div>
+<script src="/app.js"></script>
+</body>
+</html>
