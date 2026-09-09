@@ -77,6 +77,12 @@ async function initDb() {
 
     ALTER TABLE products
       ADD COLUMN IF NOT EXISTS plans JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+    ALTER TABLE orders
+      ADD COLUMN IF NOT EXISTS delivery_key TEXT DEFAULT '';
+
+    ALTER TABLE orders
+      ADD COLUMN IF NOT EXISTS delivery_expires_at TIMESTAMPTZ;
   `);
 
   const count = await pool.query(
@@ -553,19 +559,46 @@ app.get("/api/admin/orders", auth, async (req, res) => {
 app.put("/api/admin/orders/:id", auth, async (req, res) => {
   const {
     paymentStatus,
-    orderStatus
+    orderStatus,
+    deliveryKey,
+    durationMinutes
   } = req.body;
 
   try {
+    let expiry = null;
+
+    if (durationMinutes !== undefined && durationMinutes !== null && durationMinutes !== "") {
+      const minutes = Number(durationMinutes);
+
+      if (!Number.isFinite(minutes) || minutes <= 0) {
+        return res.status(400).json({
+          error: "Invalid delivery duration"
+        });
+      }
+
+      expiry = new Date(Date.now() + minutes * 60 * 1000);
+    }
+
     const r = await pool.query(
       `UPDATE orders
        SET payment_status=COALESCE($1,payment_status),
-           order_status=COALESCE($2,order_status)
-       WHERE id=$3
+           order_status=COALESCE($2,order_status),
+           delivery_key=CASE
+             WHEN $4::boolean THEN $3
+             ELSE delivery_key
+           END,
+           delivery_expires_at=CASE
+             WHEN $4::boolean THEN $5::timestamptz
+             ELSE delivery_expires_at
+           END
+       WHERE id=$6
        RETURNING *`,
       [
         paymentStatus || null,
         orderStatus || null,
+        deliveryKey !== undefined ? String(deliveryKey) : "",
+        deliveryKey !== undefined || durationMinutes !== undefined,
+        expiry,
         req.params.id
       ]
     );
@@ -579,11 +612,84 @@ app.put("/api/admin/orders/:id", auth, async (req, res) => {
     res.json(r.rows[0]);
 
   } catch (e) {
+    console.error("ORDER UPDATE ERROR:", e);
+
     res.status(500).json({
       error: "Could not update order"
     });
   }
 });
+
+app.post("/api/order-history", async (req, res) => {
+  const {
+    orderId,
+    phone
+  } = req.body;
+
+  if (!orderId || !phone) {
+    return res.status(400).json({
+      error: "Order ID and phone number are required"
+    });
+  }
+
+  try {
+    const r = await pool.query(
+      `SELECT
+        id,
+        customer_name,
+        customer_phone,
+        items,
+        subtotal,
+        payment_method,
+        payment_status,
+        order_status,
+        transaction_id,
+        delivery_key,
+        delivery_expires_at,
+        created_at
+       FROM orders
+       WHERE id = $1
+       AND customer_phone = $2
+       LIMIT 1`,
+      [
+        Number(orderId),
+        String(phone).trim()
+      ]
+    );
+
+    if (!r.rowCount) {
+      return res.status(404).json({
+        error: "Order not found"
+      });
+    }
+
+    const order = r.rows[0];
+
+    const serverNow = Date.now();
+
+    const expiresAt = order.delivery_expires_at
+      ? new Date(order.delivery_expires_at).getTime()
+      : null;
+
+    const remainingSeconds = expiresAt
+      ? Math.max(0, Math.floor((expiresAt - serverNow) / 1000))
+      : null;
+
+    res.json({
+      ...order,
+      serverNow,
+      remainingSeconds
+    });
+
+  } catch (e) {
+    console.error("ORDER HISTORY ERROR:", e);
+
+    res.status(500).json({
+      error: "Could not load order"
+    });
+  }
+});
+
 
 app.get("*", (req, res) => {
   res.sendFile(

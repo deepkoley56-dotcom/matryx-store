@@ -55,6 +55,7 @@ function hideViews() {
   [
     "shopView",
     "cartView",
+    "historyView",
     "adminView"
   ].forEach(x =>
     $(x).classList.add("hidden")
@@ -1060,36 +1061,20 @@ async function loadOrders() {
   $("orderAdmin").innerHTML =
     os.length
       ? os.map(o => `
-
         <div class="orderCard">
 
-          <h3>
-            Order #${o.id}
-          </h3>
+          <h3>Order #${o.id}</h3>
 
           <p>
-            <b>
-              ${esc(o.customer_name)}
-            </b>
-            ·
-            ${esc(o.customer_phone)}
-          </p>
-
-          <p>
-            ${esc(
-              o.customer_address || ""
-            )}
+            <b>${esc(o.customer_name)}</b>
+            · ${esc(o.customer_phone)}
           </p>
 
           <p>
             ${(o.items || [])
               .map(i => `
                 ${esc(i.name)}
-                ${
-                  i.plan
-                    ? ` [${esc(i.plan)}]`
-                    : ""
-                }
+                ${i.plan ? ` [${esc(i.plan)}]` : ""}
                 × ${i.qty}
                 — ${money(i.line)}
               `)
@@ -1097,34 +1082,64 @@ async function loadOrders() {
           </p>
 
           <p>
-            <b>
-              Total:
-              ${money(o.subtotal)}
-            </b>
+            <b>Total: ${money(o.subtotal)}</b>
           </p>
 
           <p>
             Payment:
-            <b>
-              ${esc(
-                o.payment_status
-              )}
-            </b>
+            <b>${esc(o.payment_status)}</b>
             · Order:
-            <b>
-              ${esc(
-                o.order_status
-              )}
-            </b>
+            <b>${esc(o.order_status)}</b>
           </p>
 
           <p>
             Txn:
-            ${esc(
-              o.transaction_id ||
-              "Not provided"
-            )}
+            ${esc(o.transaction_id || "Not provided")}
           </p>
+
+          <div class="deliveryAdminBox">
+
+            <h4>DELIVERY ACCESS</h4>
+
+            <input
+              id="deliveryKey-${o.id}"
+              value="${esc(o.delivery_key || "")}"
+              placeholder="Delivery Key"
+            >
+
+            <select id="deliveryDuration-${o.id}">
+              <option value="">Select duration</option>
+              <option value="60">1 Hour</option>
+              <option value="1440">1 Day</option>
+              <option value="10080">7 Days</option>
+              <option value="43200">30 Days</option>
+            </select>
+
+            <button
+              class="primary"
+              onclick="saveDelivery(${o.id})"
+            >
+              SAVE DELIVERY
+            </button>
+
+            ${
+              o.delivery_key
+                ? `<p class="deliverySaved">
+                    KEY: <b>${esc(o.delivery_key)}</b>
+                    ${
+                      o.delivery_expires_at
+                        ? `<br>Expires: ${esc(
+                            new Date(o.delivery_expires_at).toLocaleString()
+                          )}`
+                        : ""
+                    }
+                  </p>`
+                : `<p class="deliverySaved muted">
+                    No delivery key assigned
+                  </p>`
+            }
+
+          </div>
 
           <div class="adminActions">
 
@@ -1171,10 +1186,50 @@ async function loadOrders() {
           </div>
 
         </div>
-
       `).join("")
-      :
-      "<div class='checkout'>No orders yet.</div>";
+      : "<div class='checkout'>No orders yet.</div>";
+}
+
+async function saveDelivery(id) {
+  const keyEl = $("deliveryKey-" + id);
+  const durationEl = $("deliveryDuration-" + id);
+
+  const deliveryKey = keyEl.value.trim();
+  const durationMinutes = durationEl.value;
+
+  if (!deliveryKey) {
+    alert("Delivery Key enter karo.");
+    return;
+  }
+
+  if (!durationMinutes) {
+    alert("Delivery duration select karo.");
+    return;
+  }
+
+  const result = await api(
+    "/api/admin/orders/" + id,
+    {
+      method: "PUT",
+      headers: {
+        Authorization:
+          "Bearer " + adminToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        deliveryKey,
+        durationMinutes
+      })
+    }
+  );
+
+  if (!result || result.error) {
+    alert(result?.error || "Delivery save failed");
+    return;
+  }
+
+  alert("Delivery saved successfully.");
+  await loadOrders();
 }
 
 async function setOrder(
@@ -1260,3 +1315,174 @@ function escAttr(s) {
 load().catch(
   e => console.error(e)
 );
+
+/* MATRYX CUSTOMER ORDER HISTORY */
+
+function openHistory() {
+  $("shopView").classList.add("hidden");
+  $("cartView").classList.add("hidden");
+  $("adminView").classList.add("hidden");
+  $("historyView").classList.remove("hidden");
+
+  $("historyResult").innerHTML = "";
+}
+
+async function loadHistory() {
+  const orderId = $("historyOrderId").value.trim();
+  const phone = $("historyPhone").value.trim();
+
+  if (!orderId || !phone) {
+    $("historyResult").innerHTML =
+      "<p class='error'>Order ID and phone number required.</p>";
+    return;
+  }
+
+  $("historyResult").innerHTML =
+    "<p class='planHelp'>Loading order...</p>";
+
+  try {
+    const result = await api(
+      "/api/order-history",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          orderId,
+          phone
+        })
+      }
+    );
+
+    if (!result || result.error) {
+      $("historyResult").innerHTML =
+        `<p class="error">${esc(result?.error || "Order not found")}</p>`;
+      return;
+    }
+
+    renderHistoryOrder(result);
+
+  } catch (e) {
+    $("historyResult").innerHTML =
+      "<p class='error'>Could not load order.</p>";
+  }
+}
+
+function renderHistoryOrder(o) {
+  const remainingSeconds =
+    o.remainingSeconds !== null &&
+    o.remainingSeconds !== undefined
+      ? Number(o.remainingSeconds)
+      : null;
+
+  $("historyResult").innerHTML = `
+    <div class="historyOrderCard">
+
+      <div class="historyTop">
+        <div>
+          <small>ORDER ID</small>
+          <h3>#${esc(o.id)}</h3>
+        </div>
+
+        <span class="historyStatus">
+          ${esc(o.order_status)}
+        </span>
+      </div>
+
+      <div class="historyItems">
+        ${(o.items || [])
+          .map(i => `
+            <div class="historyItem">
+              <span>
+                ${esc(i.name)}
+                ${i.plan ? ` · ${esc(i.plan)}` : ""}
+                × ${i.qty}
+              </span>
+              <b>${money(i.line)}</b>
+            </div>
+          `)
+          .join("")}
+      </div>
+
+      <div class="historyTotal">
+        TOTAL
+        <b>${money(o.subtotal)}</b>
+      </div>
+
+      ${
+        o.delivery_key
+          ? `
+            <div class="deliveryCustomerBox">
+
+              <div class="deliveryLabel">
+                DELIVERY ACCESS
+              </div>
+
+              <div class="deliveryKey">
+                ${esc(o.delivery_key)}
+              </div>
+
+              <div id="deliveryTimer-${o.id}" class="deliveryTimer">
+                Checking...
+              </div>
+
+            </div>
+          `
+          : `
+            <div class="deliveryPending">
+              Delivery key has not been assigned yet.
+            </div>
+          `
+      }
+
+    </div>
+  `;
+
+  if (remainingSeconds !== null) {
+    startDeliveryTimer(
+      o.id,
+      remainingSeconds
+    );
+  }
+}
+
+function startDeliveryTimer(id, remainingSeconds) {
+  const el = $("deliveryTimer-" + id);
+
+  if (!el) return;
+
+  let remaining = Math.max(
+    0,
+    Number(remainingSeconds) || 0
+  );
+
+  function update() {
+    if (remaining <= 0) {
+      el.textContent = "EXPIRED";
+      el.classList.add("expired");
+      return;
+    }
+
+    const days =
+      Math.floor(remaining / 86400);
+
+    const hours =
+      Math.floor((remaining % 86400) / 3600);
+
+    const minutes =
+      Math.floor((remaining % 3600) / 60);
+
+    const seconds =
+      remaining % 60;
+
+    el.textContent =
+      `${days}d ${hours}h ${minutes}m ${seconds}s`;
+
+    remaining--;
+    setTimeout(update, 1000);
+  }
+
+  update();
+}
+

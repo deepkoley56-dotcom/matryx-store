@@ -102,7 +102,7 @@ body > *:not(#fire-particles){
 
 <header>
   <div class="brand"><span class="logo">M</span><span id="storeName">MATRYX STORE</span></div>
-  <nav><button onclick="showShop()">STORE</button><button onclick="openCart()">CART <b id="cartCount">0</b></button><button onclick="openAdmin()">ADMIN</button></nav>
+  <nav><button onclick="showShop()">STORE</button><button onclick="openCart()">CART <b id="cartCount">0</b></button><button onclick="openHistory()">ORDERS</button><button onclick="openAdmin()">ADMIN</button></nav>
 </header>
 
 <main>
@@ -130,6 +130,31 @@ body > *:not(#fire-particles){
     <div class="total">Total: <span id="cartTotal">₹0.00</span></div>
     <button class="primary big" onclick="placeOrder()">PLACE ORDER + WHATSAPP</button>
     <div id="orderResult"></div>
+  </div>
+</section>
+
+<section id="historyView" class="hidden">
+  <div class="sectionTitle">
+    <h2>Order History</h2>
+    <button onclick="showShop()">← Store</button>
+  </div>
+
+  <div class="checkout">
+    <h3>Find Your Order</h3>
+    <p class="planHelp">
+      Enter your Order ID and the phone number used when placing the order.
+    </p>
+
+    <div class="formgrid">
+      <input id="historyOrderId" placeholder="Order ID" inputmode="numeric">
+      <input id="historyPhone" placeholder="Phone number" inputmode="tel">
+    </div>
+
+    <button class="primary big" onclick="loadHistory()">
+      VIEW ORDER
+    </button>
+
+    <div id="historyResult"></div>
   </div>
 </section>
 
