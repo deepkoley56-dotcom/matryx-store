@@ -3,8 +3,30 @@ const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
 const { Pool } = require("pg");
+const multer = require("multer");
+const { v2: cloudinary } = require("cloudinary");
 
 const app = express();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 100 * 1024 * 1024
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("video/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only video files are allowed"));
+    }
+  }
+});
 const PORT = process.env.PORT || 3000;
 
 const pool = new Pool({
@@ -172,6 +194,52 @@ app.post("/api/admin/logout", auth, (req, res) => {
 
   res.json({ ok: true });
 });
+
+app.post(
+  "/api/admin/upload-video",
+  auth,
+  upload.single("video"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          error: "No video selected"
+        });
+      }
+
+      const result = await new Promise((resolve, reject) => {
+        const stream =
+          cloudinary.uploader.upload_stream(
+            {
+              resource_type: "video",
+              folder: "matryx-store/videos"
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+
+        stream.end(req.file.buffer);
+      });
+
+      res.json({
+        ok: true,
+        url: result.secure_url,
+        publicId: result.public_id,
+        duration: result.duration || 0,
+        bytes: result.bytes || 0
+      });
+
+    } catch (e) {
+      console.error("VIDEO UPLOAD ERROR:", e);
+
+      res.status(500).json({
+        error: e.message || "Video upload failed"
+      });
+    }
+  }
+);
 
 app.get("/api/admin/products", auth, async (req, res) => {
   try {

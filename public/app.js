@@ -683,6 +683,8 @@ async function loadAdminProducts() {
     }
   );
 
+  window.adminProducts = ps;
+
   $("productAdmin").innerHTML = `
 
     <div class="productForm">
@@ -704,10 +706,15 @@ async function loadAdminProducts() {
         placeholder="Image URL"
       >
 
-      <input
-        id="pv"
-        placeholder="Video URL"
-      >
+      <div class="videoUploadBox">
+  <label for="pvFile">PRODUCT VIDEO</label>
+  <input
+    id="pvFile"
+    type="file"
+    accept="video/*"
+  >
+  <small id="pvStatus">Select a video to upload</small>
+</div>
 
       <input
         id="ps"
@@ -787,50 +794,83 @@ async function loadAdminProducts() {
   `).join("");
 }
 
+
+async function uploadProductVideo(inputId, statusId) {
+  const input = document.getElementById(inputId);
+  const status = document.getElementById(statusId);
+
+  if (!input || !input.files || !input.files[0]) {
+    return "";
+  }
+
+  const file = input.files[0];
+
+  if (!file.type.startsWith("video/")) {
+    throw new Error("Please select a video file");
+  }
+
+  if (file.size > 100 * 1024 * 1024) {
+    throw new Error("Video must be smaller than 100 MB");
+  }
+
+  if (status) status.textContent = "Uploading video...";
+
+  const form = new FormData();
+  form.append("video", file);
+
+  const r = await fetch("/api/admin/upload-video", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + adminToken
+    },
+    body: form
+  });
+
+  const data = await r.json();
+
+  if (!r.ok || !data.ok) {
+    throw new Error(data.error || "Video upload failed");
+  }
+
+  if (status) status.textContent = "Video uploaded successfully ✓";
+
+  return data.url;
+}
+
 async function createProduct() {
-  const plans =
-    parsePlans(
-      $("plans").value
+  try {
+    const plans = parsePlans($("plans").value);
+
+    const videoUrl = await uploadProductVideo(
+      "pvFile",
+      "pvStatus"
     );
 
-  await api(
-    "/api/admin/products",
-    {
+    await api("/api/admin/products", {
       method: "POST",
 
       headers: {
-        Authorization:
-          "Bearer " + adminToken
+        Authorization: "Bearer " + adminToken
       },
 
       body: JSON.stringify({
-        name:
-          $("pn").value,
-
-        description:
-          $("pd").value,
-
-        image:
-          $("pi").value,
-
-        video:
-          $("pv").value,
-
-        stock:
-          $("ps").value,
-
+        name: $("pn").value,
+        description: $("pd").value,
+        image: $("pi").value,
+        video: videoUrl,
+        stock: $("ps").value,
         plans,
-
-        price:
-          plans[0]?.price || 0,
-
+        price: plans[0]?.price || 0,
         active: true
       })
-    }
-  );
+    });
 
-  await loadAdminProducts();
-  await load();
+    await loadAdminProducts();
+    await load();
+
+  } catch (e) {
+    alert(e.message || "Could not create product");
+  }
 }
 
 function editProduct(p) {
@@ -857,11 +897,36 @@ function editProduct(p) {
         placeholder="Image URL"
       >
 
-      <input
-        id="ev"
-        value="${escAttr(p.video || "")}"
-        placeholder="Video URL"
-      >
+      <div class="videoUploadBox">
+        <label for="evFile">PRODUCT VIDEO</label>
+
+        ${
+          p.video
+            ? `
+              <video
+                src="${escAttr(p.video)}"
+                controls
+                playsinline
+                style="width:100%;max-height:220px;border-radius:10px;margin-bottom:10px"
+              ></video>
+            `
+            : ""
+        }
+
+        <input
+          id="evFile"
+          type="file"
+          accept="video/*"
+        >
+
+        <small id="evStatus">
+          ${
+            p.video
+              ? "Choose another video to replace it"
+              : "No video uploaded"
+          }
+        </small>
+      </div>
 
       <input
         id="es"
@@ -873,9 +938,7 @@ function editProduct(p) {
       <textarea
         id="eplans"
         placeholder="1 Hour | 50&#10;1 Day | 100"
-      >${esc(
-        plansToText(p.plans)
-      )}</textarea>
+      >${esc(plansToText(p.plans))}</textarea>
 
       <p class="planHelp">
         One plan per line: Plan Name | Price
@@ -892,56 +955,64 @@ function editProduct(p) {
 
   `;
 
-  $("modal")
-    .classList.remove("hidden");
+  $("modal").classList.remove("hidden");
 }
 
 async function updateProduct(id) {
-  const plans =
-    parsePlans(
-      $("eplans").value
+  try {
+    const plans = parsePlans($("eplans").value);
+
+    const fileInput = $("evFile");
+    let videoUrl = "";
+
+    if (
+      fileInput &&
+      fileInput.files &&
+      fileInput.files[0]
+    ) {
+      videoUrl = await uploadProductVideo(
+        "evFile",
+        "evStatus"
+      );
+    } else {
+      const products = window.adminProducts || [];
+      const current = products.find(
+        p => Number(p.id) === Number(id)
+      );
+
+      videoUrl = current?.video || "";
+    }
+
+    await api(
+      "/api/admin/products/" + id,
+      {
+        method: "PUT",
+
+        headers: {
+          Authorization: "Bearer " + adminToken
+        },
+
+        body: JSON.stringify({
+          name: $("en").value,
+          description: $("ed").value,
+          image: $("ei").value,
+          video: videoUrl,
+          stock: $("es").value,
+          plans,
+          price: plans[0]?.price || 0,
+          active: true
+        })
+      }
     );
 
-  await api(
-    "/api/admin/products/" + id,
-    {
-      method: "PUT",
+    closeModal();
 
-      headers: {
-        Authorization:
-          "Bearer " + adminToken
-      },
+    await loadAdminProducts();
+    await load();
 
-      body: JSON.stringify({
-        name:
-          $("en").value,
-
-        description:
-          $("ed").value,
-
-        image:
-          $("ei").value,
-
-        video:
-          $("ev").value,
-
-        stock:
-          $("es").value,
-
-        plans,
-
-        price:
-          plans[0]?.price || 0,
-
-        active: true
-      })
-    }
-  );
-
-  closeModal();
-
-  await loadAdminProducts();
-  await load();
+  } catch (e) {
+    alert(e.message || "Could not update product");
+  }
 }
 
 async function deleteProduct(id) {
