@@ -489,8 +489,6 @@ async function placeOrder() {
         body: JSON.stringify({
           customerName,
           customerPhone,
-          address:
-            $("cAddress").value.trim(),
           items,
           paymentMethod: "UPI",
           transactionId:
@@ -534,7 +532,6 @@ async function placeOrder() {
       `Total: ${money(r.subtotal)}\n` +
       `Name: ${customerName}\n` +
       `Phone: ${customerPhone}\n` +
-      `Address: ${$("cAddress").value.trim()}\n` +
       `UPI Transaction ID: ${$("cTxn").value.trim()}`;
 
     cart = [];
