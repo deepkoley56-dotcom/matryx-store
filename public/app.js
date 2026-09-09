@@ -975,8 +975,17 @@ async function updateProduct(id) {
         "evStatus"
       );
     } else {
-      const products = window.adminProducts || [];
-      const current = products.find(
+      const currentProducts = await api(
+        "/api/admin/products",
+        {
+          headers: {
+            Authorization:
+              "Bearer " + adminToken
+          }
+        }
+      );
+
+      const current = currentProducts.find(
         p => Number(p.id) === Number(id)
       );
 
