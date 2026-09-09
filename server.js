@@ -161,7 +161,7 @@ app.get("/api/config", (req, res) => {
 app.get("/api/products", async (req, res) => {
   try {
     const r = await pool.query(
-      "SELECT * FROM products WHERE active=true ORDER BY id DESC"
+      "SELECT * FROM products ORDER BY id DESC"
     );
 
     res.json(r.rows);
