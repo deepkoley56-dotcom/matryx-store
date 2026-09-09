@@ -1107,13 +1107,21 @@ async function loadOrders() {
               placeholder="Delivery Key"
             >
 
-            <select id="deliveryDuration-${o.id}">
-              <option value="">Select duration</option>
-              <option value="60">1 Hour</option>
-              <option value="1440">1 Day</option>
-              <option value="10080">7 Days</option>
-              <option value="43200">30 Days</option>
-            </select>
+            <div class="customDurationRow">
+              <input
+                id="deliveryDuration-${o.id}"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Enter time"
+              >
+
+              <select id="deliveryUnit-${o.id}">
+                <option value="minutes">Minutes</option>
+                <option value="hours" selected>Hours</option>
+                <option value="days">Days</option>
+              </select>
+            </div>
 
             <button
               class="primary"
@@ -1193,17 +1201,19 @@ async function loadOrders() {
 async function saveDelivery(id) {
   const keyEl = $("deliveryKey-" + id);
   const durationEl = $("deliveryDuration-" + id);
+  const unitEl = $("deliveryUnit-" + id);
 
   const deliveryKey = keyEl.value.trim();
-  const durationMinutes = durationEl.value;
+  const durationValue = durationEl.value.trim();
+  const durationUnit = unitEl.value;
 
   if (!deliveryKey) {
     alert("Delivery Key enter karo.");
     return;
   }
 
-  if (!durationMinutes) {
-    alert("Delivery duration select karo.");
+  if (!durationValue || Number(durationValue) <= 0) {
+    alert("Valid delivery time enter karo.");
     return;
   }
 
@@ -1218,7 +1228,8 @@ async function saveDelivery(id) {
       },
       body: JSON.stringify({
         deliveryKey,
-        durationMinutes
+        durationValue,
+        durationUnit
       })
     }
   );

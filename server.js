@@ -561,23 +561,63 @@ app.put("/api/admin/orders/:id", auth, async (req, res) => {
     paymentStatus,
     orderStatus,
     deliveryKey,
-    durationMinutes
+    durationMinutes,
+    durationValue,
+    durationUnit
   } = req.body;
 
   try {
     let expiry = null;
+    let finalMinutes = null;
 
-    if (durationMinutes !== undefined && durationMinutes !== null && durationMinutes !== "") {
-      const minutes = Number(durationMinutes);
+    if (
+      durationValue !== undefined &&
+      durationValue !== null &&
+      durationValue !== ""
+    ) {
+      const value = Number(durationValue);
+      const unit = String(durationUnit || "").toLowerCase();
 
-      if (!Number.isFinite(minutes) || minutes <= 0) {
+      if (!Number.isFinite(value) || value <= 0) {
+        return res.status(400).json({
+          error: "Invalid delivery time"
+        });
+      }
+
+      if (unit === "minutes") {
+        finalMinutes = value;
+      } else if (unit === "hours") {
+        finalMinutes = value * 60;
+      } else if (unit === "days") {
+        finalMinutes = value * 1440;
+      } else {
+        return res.status(400).json({
+          error: "Invalid delivery unit"
+        });
+      }
+    } else if (
+      durationMinutes !== undefined &&
+      durationMinutes !== null &&
+      durationMinutes !== ""
+    ) {
+      finalMinutes = Number(durationMinutes);
+
+      if (!Number.isFinite(finalMinutes) || finalMinutes <= 0) {
         return res.status(400).json({
           error: "Invalid delivery duration"
         });
       }
-
-      expiry = new Date(Date.now() + minutes * 60 * 1000);
     }
+
+    if (finalMinutes !== null) {
+      expiry = new Date(
+        Date.now() + finalMinutes * 60 * 1000
+      );
+    }
+
+    const hasDeliveryUpdate =
+      deliveryKey !== undefined ||
+      finalMinutes !== null;
 
     const r = await pool.query(
       `UPDATE orders
@@ -596,8 +636,10 @@ app.put("/api/admin/orders/:id", auth, async (req, res) => {
       [
         paymentStatus || null,
         orderStatus || null,
-        deliveryKey !== undefined ? String(deliveryKey) : "",
-        deliveryKey !== undefined || durationMinutes !== undefined,
+        deliveryKey !== undefined
+          ? String(deliveryKey)
+          : "",
+        hasDeliveryUpdate,
         expiry,
         req.params.id
       ]
@@ -619,6 +661,7 @@ app.put("/api/admin/orders/:id", auth, async (req, res) => {
     });
   }
 });
+
 
 app.post("/api/order-history", async (req, res) => {
   const {
