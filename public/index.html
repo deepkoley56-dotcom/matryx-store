@@ -16,24 +16,7 @@
   <div class="introName">MATRYX <span>STORE</span></div>
   <div class="introLine"></div>
   <div class="introSub">PREMIUM DIGITAL STORE</div>
-<button id="introSoundBtn" type="button" style="
-  margin-top:22px;
-  padding:12px 24px;
-  border:1px solid rgba(255,27,45,.8);
-  border-radius:999px;
-  background:rgba(0,0,0,.65);
-  color:#fff;
-  font-size:12px;
-  font-weight:800;
-  letter-spacing:2px;
-  cursor:pointer;
-  box-shadow:0 0 18px rgba(255,27,45,.35);
-  user-select:none;
-  position:relative;
-  z-index:1000000;
-">
-  🔊 SOUND ON
-</button>
+
 
 </div>
 <canvas id="fire-particles"></canvas>
@@ -272,6 +255,21 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => {
     audio.play().catch(() => {
       btn.textContent = "🔊 SOUND ON";
+    });
+  }, 450);
+});
+</script>
+
+
+<script>
+window.addEventListener("load", () => {
+  const voice = new Audio("/matryx-store-voice.mp3");
+  voice.preload = "auto";
+  voice.volume = 1.0;
+
+  setTimeout(() => {
+    voice.play().catch(() => {
+      console.log("Browser blocked automatic audio playback.");
     });
   }, 450);
 });
