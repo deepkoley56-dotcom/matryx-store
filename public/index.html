@@ -16,6 +16,23 @@
   <div class="introName">MATRYX <span>STORE</span></div>
   <div class="introLine"></div>
   <div class="introSub">PREMIUM DIGITAL STORE</div>
+<div id="introSoundBtn" style="
+  margin-top:22px;
+  padding:12px 24px;
+  border:1px solid rgba(255,27,45,.8);
+  border-radius:999px;
+  background:rgba(0,0,0,.55);
+  color:#fff;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:2px;
+  cursor:pointer;
+  box-shadow:0 0 18px rgba(255,27,45,.25);
+  user-select:none;
+">
+  🔊 SOUND ON
+</div>
+
 </div>
 <canvas id="fire-particles"></canvas>
 <style>
@@ -213,17 +230,45 @@ body > *:not(#fire-particles){
 <div id="modal" class="modal hidden"><div class="modalBox"><button class="close" onclick="closeModal()">×</button><div id="modalContent"></div></div></div>
 <script src="/app.js"></script>
 
+
+
+
 <script>
-window.addEventListener("load", () => {
-  setTimeout(() => {
-    const audio = new Audio("/matryx-store-voice.mp3");
-    audio.preload = "auto";
-    audio.volume = 1.0;
-    audio.play().catch(() => {
-      console.log("Voice autoplay blocked by browser.");
+(() => {
+  const audio = new Audio("/matryx-store-voice.mp3");
+  audio.preload = "auto";
+  audio.volume = 1.0;
+
+  const btn = document.getElementById("introSoundBtn");
+  let played = false;
+
+  function playVoice() {
+    if (played) return;
+
+    audio.currentTime = 0;
+
+    audio.play().then(() => {
+      played = true;
+
+      if (btn) {
+        btn.textContent = "🔊 SOUND PLAYING";
+        btn.style.opacity = "0.7";
+        btn.style.pointerEvents = "none";
+      }
+    }).catch(() => {
+      if (btn) {
+        btn.textContent = "🔊 TAP TO PLAY";
+      }
     });
-  }, 450);
-});
+  }
+
+  if (btn) {
+    btn.addEventListener("click", playVoice, { once:true });
+  }
+
+  // Try automatically shortly after intro starts.
+  setTimeout(playVoice, 450);
+})();
 </script>
 
 </body>
