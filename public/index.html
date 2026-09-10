@@ -16,22 +16,24 @@
   <div class="introName">MATRYX <span>STORE</span></div>
   <div class="introLine"></div>
   <div class="introSub">PREMIUM DIGITAL STORE</div>
-<div id="introSoundBtn" style="
+<button id="introSoundBtn" type="button" style="
   margin-top:22px;
   padding:12px 24px;
   border:1px solid rgba(255,27,45,.8);
   border-radius:999px;
-  background:rgba(0,0,0,.55);
+  background:rgba(0,0,0,.65);
   color:#fff;
   font-size:12px;
   font-weight:800;
   letter-spacing:2px;
   cursor:pointer;
-  box-shadow:0 0 18px rgba(255,27,45,.25);
+  box-shadow:0 0 18px rgba(255,27,45,.35);
   user-select:none;
+  position:relative;
+  z-index:1000000;
 ">
   🔊 SOUND ON
-</div>
+</button>
 
 </div>
 <canvas id="fire-particles"></canvas>
@@ -233,42 +235,46 @@ body > *:not(#fire-particles){
 
 
 
+
+
+
 <script>
-(() => {
-  const audio = new Audio("/matryx-store-voice.mp3");
-  audio.preload = "auto";
-  audio.volume = 1.0;
-
+document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("introSoundBtn");
-  let played = false;
 
-  function playVoice() {
-    if (played) return;
+  if (!btn) return;
 
-    audio.currentTime = 0;
+  const audio = document.createElement("audio");
+  audio.src = "/matryx-store-voice.mp3";
+  audio.preload = "auto";
+  audio.volume = 1;
 
-    audio.play().then(() => {
-      played = true;
+  document.body.appendChild(audio);
 
-      if (btn) {
-        btn.textContent = "🔊 SOUND PLAYING";
-        btn.style.opacity = "0.7";
-        btn.style.pointerEvents = "none";
-      }
-    }).catch(() => {
-      if (btn) {
-        btn.textContent = "🔊 TAP TO PLAY";
-      }
+  btn.addEventListener("click", async () => {
+    try {
+      audio.currentTime = 0;
+      await audio.play();
+
+      btn.textContent = "🔊 PLAYING";
+
+      setTimeout(() => {
+        btn.textContent = "✓ SOUND ON";
+      }, 1500);
+
+    } catch (error) {
+      console.error("Voice playback error:", error);
+      btn.textContent = "⚠ TAP AGAIN";
+    }
+  });
+
+  // Try autoplay once.
+  setTimeout(() => {
+    audio.play().catch(() => {
+      btn.textContent = "🔊 SOUND ON";
     });
-  }
-
-  if (btn) {
-    btn.addEventListener("click", playVoice, { once:true });
-  }
-
-  // Try automatically shortly after intro starts.
-  setTimeout(playVoice, 450);
-})();
+  }, 450);
+});
 </script>
 
 </body>
