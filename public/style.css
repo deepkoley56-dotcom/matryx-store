@@ -1085,3 +1085,41 @@ section{
   }
 }
 
+
+/* FIX: INTRO MUST BE FULLSCREEN OVERLAY */
+#storeIntro{
+  position:fixed !important;
+  top:0 !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:0 !important;
+  width:100vw !important;
+  height:100vh !important;
+  min-height:100vh !important;
+  margin:0 !important;
+  padding:0 !important;
+  z-index:999999 !important;
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  animation:introExit 1s ease 4.7s forwards !important;
+}
+
+@keyframes introExit{
+  0%{
+    opacity:1;
+    visibility:visible;
+    pointer-events:auto;
+  }
+  75%{
+    opacity:1;
+    visibility:visible;
+    pointer-events:auto;
+  }
+  100%{
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+  }
+}
+
