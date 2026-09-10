@@ -2111,3 +2111,219 @@ html{
 .featuresBack .backBtn{
   flex:0 0 auto!important;
 }
+
+/* MATRYX STORE — PREMIUM INTRO UPGRADE */
+#storeIntro{
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255,27,45,.11), transparent 28%),
+    radial-gradient(circle at 50% 50%, #090909 0%, #030303 58%, #000 100%) !important;
+}
+
+#storeIntro::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(to bottom, transparent 0%, rgba(255,27,45,.025) 50%, transparent 100%);
+  opacity:.7;
+}
+
+.introGrid{
+  position:absolute;
+  inset:0;
+  opacity:.16;
+  background-image:
+    linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+  background-size:46px 46px;
+  mask-image:radial-gradient(circle at center, black 0%, transparent 72%);
+  -webkit-mask-image:radial-gradient(circle at center, black 0%, transparent 72%);
+  animation:introGridMove 10s linear infinite;
+}
+
+.introAmbient{
+  position:absolute;
+  border-radius:50%;
+  pointer-events:none;
+  filter:blur(35px);
+}
+.introAmbientOne{
+  width:260px;height:260px;
+  background:rgba(255,27,45,.08);
+  left:-80px;top:12%;
+  animation:introAmbientFloat 6s ease-in-out infinite;
+}
+.introAmbientTwo{
+  width:300px;height:300px;
+  background:rgba(255,27,45,.055);
+  right:-100px;bottom:8%;
+  animation:introAmbientFloat 7s ease-in-out 1s infinite reverse;
+}
+
+.introTopLabel{
+  position:absolute;
+  top:34px;
+  color:#777;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:4px;
+  opacity:0;
+  animation:introTopIn .8s ease .15s forwards;
+}
+.introTopLabel span{color:#ff1b2d;margin:0 7px}
+
+.introCorner{
+  position:absolute;
+  width:34px;height:34px;
+  opacity:0;
+  animation:introCornerIn .8s ease .25s forwards;
+}
+.introCorner::before,.introCorner::after{
+  content:"";
+  position:absolute;
+  background:#ff1b2d;
+  box-shadow:0 0 8px rgba(255,27,45,.7);
+}
+.introCornerTL{left:28px;top:28px;border-left:1px solid rgba(255,27,45,.35);border-top:1px solid rgba(255,27,45,.35)}
+.introCornerTR{right:28px;top:28px;border-right:1px solid rgba(255,27,45,.35);border-top:1px solid rgba(255,27,45,.35)}
+.introCornerBL{left:28px;bottom:28px;border-left:1px solid rgba(255,27,45,.35);border-bottom:1px solid rgba(255,27,45,.35)}
+.introCornerBR{right:28px;bottom:28px;border-right:1px solid rgba(255,27,45,.35);border-bottom:1px solid rgba(255,27,45,.35)}
+
+.introLogoWrap{
+  width:198px !important;
+  height:198px !important;
+  z-index:2;
+}
+.introLogoWrap::before{
+  inset:-13px !important;
+  border:1px solid rgba(255,27,45,.48) !important;
+  border-right-color:transparent !important;
+  border-bottom-color:rgba(255,255,255,.16) !important;
+  box-shadow:0 0 22px rgba(255,27,45,.25), inset 0 0 22px rgba(255,27,45,.05) !important;
+}
+.introLogoHalo{
+  position:absolute;
+  inset:7px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:inset 0 0 30px rgba(255,27,45,.12);
+  animation:introHalo 2.8s ease-in-out infinite;
+}
+.introOrbit{
+  position:absolute;
+  border-radius:50%;
+  pointer-events:none;
+  border:1px dashed rgba(255,27,45,.28);
+}
+.introOrbitOne{
+  inset:-28px;
+  animation:introOrbit 7s linear infinite;
+}
+.introOrbitTwo{
+  inset:-40px;
+  border-color:rgba(255,255,255,.09);
+  animation:introOrbitReverse 11s linear infinite;
+}
+.introOrbitOne::after,.introOrbitTwo::after{
+  content:"";
+  position:absolute;
+  width:5px;height:5px;
+  border-radius:50%;
+  background:#ff1b2d;
+  box-shadow:0 0 12px #ff1b2d;
+}
+.introOrbitOne::after{top:18px;left:50%}
+.introOrbitTwo::after{bottom:20px;right:25%}
+
+.introLogo{
+  position:relative;
+  z-index:3;
+  filter:
+    drop-shadow(0 0 10px rgba(255,255,255,.4))
+    drop-shadow(0 0 28px rgba(255,27,45,.9))
+    drop-shadow(0 0 55px rgba(255,27,45,.25)) !important;
+  animation:introLogoPulse 2.5s ease-in-out 1.5s infinite;
+}
+
+.introName{
+  margin-top:38px !important;
+  font-size:30px !important;
+  letter-spacing:8px !important;
+  text-shadow:0 0 22px rgba(255,27,45,.5),0 0 45px rgba(255,27,45,.12) !important;
+  z-index:3;
+}
+.introName span{
+  text-shadow:0 0 16px rgba(255,27,45,.75);
+}
+
+.introLine{
+  width:0;
+  height:2px !important;
+  margin-top:16px !important;
+  background:linear-gradient(90deg,transparent,#ff1b2d,transparent) !important;
+  box-shadow:0 0 15px #ff1b2d !important;
+  animation:introLinePremium 1s ease 1.8s forwards !important;
+  z-index:3;
+}
+.introLine i{
+  display:block;
+  width:5px;height:5px;
+  margin:-2px auto 0;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 0 10px #ff1b2d,0 0 20px #ff1b2d;
+}
+
+.introSub{
+  margin-top:14px !important;
+  color:#aaa !important;
+  font-size:9px !important;
+  letter-spacing:5px !important;
+  z-index:3;
+}
+
+.introLoading{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-top:25px;
+  opacity:0;
+  z-index:3;
+  animation:introLoadingIn .7s ease 2.45s forwards;
+}
+.introLoading span{
+  width:22px;height:1px;
+  background:linear-gradient(90deg,transparent,#ff1b2d);
+  box-shadow:0 0 7px rgba(255,27,45,.5);
+}
+.introLoading span:last-child{transform:rotate(180deg)}
+.introLoading b{
+  color:#555;
+  font-size:7px;
+  letter-spacing:3px;
+  font-weight:900;
+}
+
+@keyframes introGridMove{from{transform:translateY(0)}to{transform:translateY(46px)}}
+@keyframes introAmbientFloat{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(25px,-20px) scale(1.12)}}
+@keyframes introTopIn{to{opacity:1;transform:translateY(0)}}
+@keyframes introCornerIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+@keyframes introHalo{0%,100%{opacity:.5;transform:scale(.97)}50%{opacity:1;transform:scale(1.02)}}
+@keyframes introOrbit{to{transform:rotate(360deg)}}
+@keyframes introOrbitReverse{to{transform:rotate(-360deg)}}
+@keyframes introLogoPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
+@keyframes introLinePremium{to{width:210px}}
+@keyframes introLoadingIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:700px){
+  .introTopLabel{top:24px;font-size:7px;letter-spacing:3px}
+  .introCornerTL,.introCornerTR{top:20px}
+  .introCornerBL,.introCornerBR{bottom:20px}
+  .introCornerTL,.introCornerBL{left:20px}
+  .introCornerTR,.introCornerBR{right:20px}
+  .introLogoWrap{width:165px !important;height:165px !important}
+  .introName{font-size:23px !important;letter-spacing:6px !important;margin-top:34px !important}
+  .introOrbitOne{inset:-23px}
+  .introOrbitTwo{inset:-33px}
+  .introLoading{margin-top:22px}
+}
