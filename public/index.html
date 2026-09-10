@@ -212,5 +212,19 @@ body > *:not(#fire-particles){
 
 <div id="modal" class="modal hidden"><div class="modalBox"><button class="close" onclick="closeModal()">×</button><div id="modalContent"></div></div></div>
 <script src="/app.js"></script>
+
+<script>
+window.addEventListener("load", () => {
+  setTimeout(() => {
+    const audio = new Audio("/matryx-store-voice.mp3");
+    audio.preload = "auto";
+    audio.volume = 1.0;
+    audio.play().catch(() => {
+      console.log("Voice autoplay blocked by browser.");
+    });
+  }, 450);
+});
+</script>
+
 </body>
 </html>
