@@ -2015,3 +2015,79 @@ html{
     font-size:12px;
   }
 }
+
+/* =========================================================
+   FLIP CARD LAYOUT FIX — KEEP ALL FRONT ACTION BUTTONS VISIBLE
+   ========================================================= */
+.card{
+  overflow:visible!important;
+  min-height:0!important;
+}
+
+.cardFlip{
+  position:relative!important;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  transform-style:preserve-3d!important;
+}
+
+.cardFace{
+  position:relative!important;
+  grid-area:1 / 1!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+  box-sizing:border-box!important;
+}
+
+.cardFront{
+  transform:rotateY(0deg)!important;
+  z-index:2;
+}
+
+.cardBack{
+  transform:rotateY(180deg)!important;
+  z-index:1;
+}
+
+.card.flipped .cardFront{
+  z-index:1;
+}
+
+.card.flipped .cardBack{
+  z-index:2;
+}
+
+.cardFront .cardBody{
+  padding-bottom:20px!important;
+}
+
+.cardActionRow{
+  position:relative!important;
+  z-index:10!important;
+  display:grid!important;
+  grid-template-columns:minmax(105px,1fr) minmax(130px,1.35fr)!important;
+  gap:9px!important;
+  margin-top:12px!important;
+}
+
+.cardActionRow button{
+  min-height:46px!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+.featuresBack{
+  min-height:100%!important;
+  height:100%!important;
+}
+
+@media(max-width:430px){
+  .cardActionRow{
+    grid-template-columns:minmax(95px,1fr) minmax(120px,1.25fr)!important;
+  }
+}
