@@ -1123,3 +1123,192 @@ section{
   }
 }
 
+
+/* MATRYX STORE - GET SUPPORT */
+.supportShowcase{
+  position:relative;
+  max-width:760px;
+  margin:75px auto 20px;
+  padding:48px 32px;
+  text-align:center;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 50% 0%,rgba(255,27,45,.14),transparent 45%),
+    linear-gradient(145deg,#111,#070707);
+  border:1px solid #292929;
+  border-radius:24px;
+  box-shadow:
+    0 0 45px rgba(255,27,45,.08),
+    inset 0 0 35px rgba(255,27,45,.025);
+}
+
+.supportShowcase:before{
+  content:"";
+  position:absolute;
+  top:0;
+  left:15%;
+  width:70%;
+  height:1px;
+  background:linear-gradient(90deg,transparent,#ff1b2d,transparent);
+  box-shadow:0 0 18px #ff1b2d;
+}
+
+.supportIcon{
+  width:64px;
+  height:64px;
+  margin:0 auto 20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:18px;
+  background:linear-gradient(145deg,#ff3347,#a90012);
+  color:#fff;
+  font-size:30px;
+  box-shadow:
+    0 0 25px rgba(255,27,45,.3),
+    inset 0 1px 0 rgba(255,255,255,.2);
+  transform:rotate(-5deg);
+}
+
+.supportEyebrow{
+  margin:0 0 10px;
+  color:#ff3347;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:4px;
+}
+
+.supportShowcase h2{
+  margin:0;
+  color:#fff;
+  font-size:34px;
+  font-weight:1000;
+  letter-spacing:2px;
+}
+
+.supportShowcase h2 span{
+  color:#ff1b2d;
+  text-shadow:0 0 18px rgba(255,27,45,.35);
+}
+
+.supportText{
+  max-width:560px;
+  margin:16px auto 28px;
+  color:#888;
+  font-size:14px;
+  line-height:1.8;
+}
+
+.supportTelegram{
+  position:relative;
+  max-width:520px;
+  margin:auto;
+  padding:15px 18px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  text-align:left;
+  text-decoration:none;
+  color:#fff;
+  background:#080808;
+  border:1px solid #ff1b2d;
+  border-radius:14px;
+  box-shadow:0 0 25px rgba(255,27,45,.09);
+  transition:.25s ease;
+}
+
+.supportTelegram:hover{
+  transform:translateY(-3px);
+  background:#0d0d0d;
+  box-shadow:0 0 35px rgba(255,27,45,.2);
+}
+
+.telegramIcon{
+  width:46px;
+  height:46px;
+  flex:0 0 46px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:12px;
+  background:#ff1b2d;
+  color:#fff;
+  font-size:23px;
+  box-shadow:0 0 18px rgba(255,27,45,.35);
+}
+
+.supportTelegram span:nth-child(2){
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  font-size:13px;
+  font-weight:1000;
+  letter-spacing:1px;
+}
+
+.supportTelegram small{
+  color:#777;
+  font-size:8px;
+  letter-spacing:2px;
+}
+
+.supportTelegram > b{
+  margin-left:auto;
+  color:#ff3347;
+  font-size:22px;
+}
+
+/* MATRYX STORE FOOTER */
+.storeFooter{
+  margin-top:65px;
+  padding:30px 20px 40px;
+  text-align:center;
+  border-top:1px solid #1d1d1d;
+  background:rgba(3,3,3,.55);
+}
+
+.storeFooter p{
+  margin:0;
+  color:#666;
+  font-size:12px;
+  line-height:1.8;
+}
+
+.storeFooter b{
+  color:#aaa;
+}
+
+.storeFooter strong{
+  color:#ff3347;
+  font-weight:900;
+}
+
+@media(max-width:700px){
+  .supportShowcase{
+    margin:55px 16px 15px;
+    padding:38px 18px;
+    border-radius:20px;
+  }
+
+  .supportShowcase h2{
+    font-size:28px;
+  }
+
+  .supportText{
+    font-size:13px;
+  }
+
+  .supportTelegram{
+    padding:14px;
+  }
+
+  .storeFooter{
+    margin-top:45px;
+    padding:25px 18px 35px;
+  }
+
+  .storeFooter p{
+    font-size:11px;
+  }
+}
+
