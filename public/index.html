@@ -7,6 +7,16 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+
+<div id="storeIntro">
+  <div class="introGlow"></div>
+  <div class="introLogoWrap">
+    <img src="/matryx-store-logo.png" alt="MATRYX STORE" class="introLogo">
+  </div>
+  <div class="introName">MATRYX <span>STORE</span></div>
+  <div class="introLine"></div>
+  <div class="introSub">PREMIUM DIGITAL STORE</div>
+</div>
 <canvas id="fire-particles"></canvas>
 <style>
 #fire-particles{
@@ -101,7 +111,7 @@ body > *:not(#fire-particles){
 </script>
 
 <header>
-  <div class="brand"><span class="logo">M</span><span id="storeName">MATRYX STORE</span></div>
+  <div class="brand"><img src="/matryx-store-logo.png" class="navLogo" alt="MATRYX STORE"><span id="storeName">MATRYX STORE</span></div>
   <nav><button onclick="showShop()">STORE</button><button onclick="openCart()">CART <b id="cartCount">0</b></button><button onclick="openHistory()">ORDERS</button><button onclick="openAdmin()">ADMIN</button></nav>
 </header>
 
