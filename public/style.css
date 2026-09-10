@@ -2092,54 +2092,22 @@ html{
   }
 }
 
-
-/* =========================================================
-   FAST FEATURES FLIP — PERFORMANCE FIX
-   Keeps the premium 3D look but removes the heavy lag.
-   ========================================================= */
-
-.cardFlip{
-  transition:transform .28s cubic-bezier(.22,.7,.2,1)!important;
-  will-change:transform;
-  transform-origin:center center;
+/* FEATURES LIST FIX — KEEP EACH FEATURE BOX COMPACT TO ITS CONTENT */
+.featuresList{
+  align-content:start!important;
+  grid-auto-rows:max-content!important;
+  flex:none!important;
+  height:auto!important;
+  max-height:calc(100% - 130px)!important;
 }
 
-.cardFace{
-  will-change:transform;
-  contain:layout paint;
+.featuresList li{
+  height:auto!important;
+  min-height:0!important;
+  box-sizing:border-box!important;
+  padding:9px 11px!important;
 }
 
-.featureBtn,
-.backBtn{
-  transition:background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease!important;
-}
-
-.featureBtn:hover,
-.backBtn:hover{
-  transform:none!important;
-}
-
-.cardActionRow button{
-  -webkit-tap-highlight-color:transparent;
-  touch-action:manipulation;
-}
-
-/* Prevent accidental animation/layout work on inactive cards */
-.card:not(.flipped) .cardBack{
-  pointer-events:none;
-}
-
-.card.flipped .cardFront{
-  pointer-events:none;
-}
-
-.card.flipped .cardBack{
-  pointer-events:auto;
-}
-
-/* Faster on phones */
-@media(max-width:700px){
-  .cardFlip{
-    transition-duration:.24s!important;
-  }
+.featuresBack .backBtn{
+  flex:0 0 auto!important;
 }
