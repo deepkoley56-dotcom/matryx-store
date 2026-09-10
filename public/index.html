@@ -34,79 +34,80 @@ body > *:not(#fire-particles){
 </style>
 <script>
 (() => {
+  "use strict";
+
   const c = document.getElementById("fire-particles");
+  if (!c) return;
+
   const ctx = c.getContext("2d");
-  let w,h,dpr,particles=[];
+  let w = 0, h = 0;
+  let bubbles = [];
 
-  function resize(){
-    dpr=Math.min(devicePixelRatio||1,2);
-    w=innerWidth;
-    h=innerHeight;
-    c.width=w*dpr;
-    c.height=h*dpr;
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    particles=[];
-    const count=Math.min(150,Math.max(70,Math.floor(w*h/9000)));
-    for(let i=0;i<count;i++) spawn(true);
+  function resize() {
+    w = window.innerWidth;
+    h = window.innerHeight;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+
+    c.width = w * dpr;
+    c.height = h * dpr;
+    c.style.width = w + "px";
+    c.style.height = h + "px";
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    createBubbles();
   }
 
-  function spawn(initial=false){
-    particles.push({
-      x:Math.random()*w,
-      y:initial?Math.random()*h:h+10,
-      vx:(Math.random()-.5)*.45,
-      vy:-(.45+Math.random()*1.35),
-      size:1+Math.random()*3.5,
-      life:initial?Math.random():0,
-      max:.45+Math.random()*.9,
-      drift:Math.random()*Math.PI*2,
-      glow:4+Math.random()*10
-    });
+  function createBubbles() {
+    const count = w < 700 ? 45 : 85;
+
+    bubbles = Array.from({length: count}, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: Math.random() * 3 + 1,
+      speed: Math.random() * 0.45 + 0.12,
+      drift: (Math.random() - 0.5) * 0.22,
+      alpha: Math.random() * 0.35 + 0.12,
+      pulse: Math.random() * Math.PI * 2
+    }));
   }
 
-  function draw(){
-    ctx.clearRect(0,0,w,h);
+  function animate() {
+    ctx.clearRect(0, 0, w, h);
 
-    for(let i=particles.length-1;i>=0;i--){
-      const p=particles[i];
+    for (const b of bubbles) {
+      b.y -= b.speed;
+      b.x += b.drift;
+      b.pulse += 0.02;
 
-      p.life+=.008;
-      p.x+=p.vx+Math.sin(p.life*5+p.drift)*.25;
-      p.y+=p.vy;
-
-      const a=Math.max(0,1-p.life/p.max);
-      if(a<=0 || p.y<-20){
-        particles.splice(i,1);
-        spawn();
-        continue;
+      if (b.y < -10) {
+        b.y = h + 10;
+        b.x = Math.random() * w;
       }
 
-      const g=ctx.createRadialGradient(
-        p.x,p.y,0,
-        p.x,p.y,p.glow
-      );
+      if (b.x < -10) b.x = w + 10;
+      if (b.x > w + 10) b.x = -10;
 
-      g.addColorStop(0,`rgba(255,245,190,${a})`);
-      g.addColorStop(.25,`rgba(255,130,20,${a*.9})`);
-      g.addColorStop(1,`rgba(255,20,0,0)`);
+      const a = b.alpha + Math.sin(b.pulse) * 0.05;
 
-      ctx.fillStyle=g;
       ctx.beginPath();
-      ctx.arc(p.x,p.y,p.glow,0,Math.PI*2);
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+
+      ctx.fillStyle = `rgba(255, 27, 45, ${a})`;
+      ctx.shadowColor = "#ff1b2d";
+      ctx.shadowBlur = b.r * 4;
       ctx.fill();
 
-      ctx.fillStyle=`rgba(255,${80+Math.random()*100},20,${a*.8})`;
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
-      ctx.fill();
+      ctx.shadowBlur = 0;
     }
 
-    requestAnimationFrame(draw);
+    requestAnimationFrame(animate);
   }
 
-  addEventListener("resize",resize);
   resize();
-  draw();
+  window.addEventListener("resize", resize, {passive:true});
+  requestAnimationFrame(animate);
 })();
 </script>
 
