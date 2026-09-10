@@ -1770,3 +1770,248 @@ html{
   }
 }
 
+
+
+/* =========================================================
+   PRODUCT 3D FEATURES FLIP
+   ========================================================= */
+
+#products{
+  perspective:1400px;
+}
+
+.card{
+  position:relative;
+  perspective:1400px;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  min-height:100%;
+  transform:none!important;
+}
+
+.cardFlip{
+  position:relative;
+  width:100%;
+  height:100%;
+  min-height:520px;
+  transform-style:preserve-3d;
+  transition:transform .72s cubic-bezier(.2,.75,.2,1);
+}
+
+.card.flipped .cardFlip{
+  transform:rotateY(180deg);
+}
+
+.cardFace{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  min-height:520px;
+  overflow:hidden;
+  border:1px solid #292929;
+  border-radius:16px;
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,0,25,.018)),
+    #0b0b0b;
+  box-shadow:
+    0 14px 45px rgba(0,0,0,.34),
+    0 0 28px rgba(255,27,45,.045);
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+
+.cardFront{
+  transform:rotateY(0deg);
+}
+
+.cardBack{
+  transform:rotateY(180deg);
+}
+
+.cardFront > img{
+  display:block;
+  width:100%;
+  height:215px;
+  object-fit:cover;
+}
+
+.cardFront .productVideo{
+  border-radius:0;
+}
+
+.cardActionRow{
+  display:grid;
+  grid-template-columns:1fr 1.35fr;
+  gap:9px;
+  margin-top:11px;
+}
+
+.cardActionRow .primary{
+  width:100%;
+}
+
+.featureBtn,
+.backBtn{
+  position:relative;
+  overflow:hidden;
+  min-height:45px;
+  padding:11px 14px;
+  border-radius:11px;
+  border:1px solid #343434;
+  background:
+    linear-gradient(135deg,#151515,#0b0b0b);
+  color:#ddd;
+  font-weight:900;
+  letter-spacing:.6px;
+  cursor:pointer;
+  transition:.25s ease;
+}
+
+.featureBtn:hover,
+.backBtn:hover{
+  color:#fff;
+  border-color:#ff1b2d;
+  background:
+    linear-gradient(135deg,rgba(255,27,45,.16),#0d0d0d);
+  box-shadow:0 0 22px rgba(255,27,45,.13);
+  transform:translateY(-2px);
+}
+
+.featureBtn:active,
+.backBtn:active{
+  transform:translateY(0);
+}
+
+.featuresBack{
+  height:100%;
+  min-height:520px;
+  box-sizing:border-box;
+  display:flex;
+  flex-direction:column;
+  padding:24px 20px 20px;
+  background:
+    radial-gradient(circle at 85% 5%,rgba(255,27,45,.13),transparent 35%),
+    radial-gradient(circle at 0 100%,rgba(255,27,45,.06),transparent 38%),
+    #090909;
+}
+
+.featuresHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.featuresHeader small{
+  display:block;
+  color:#777;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:2px;
+  margin-bottom:7px;
+}
+
+.featuresHeader h3{
+  margin:0;
+  color:#fff;
+  font-size:21px;
+  line-height:1.2;
+}
+
+.featuresIcon{
+  width:38px;
+  height:38px;
+  flex:0 0 38px;
+  display:grid;
+  place-items:center;
+  border-radius:11px;
+  color:#ff3347;
+  border:1px solid rgba(255,27,45,.28);
+  background:rgba(255,27,45,.07);
+  box-shadow:0 0 20px rgba(255,27,45,.09);
+}
+
+.featuresDivider{
+  height:1px;
+  margin:18px 0 16px;
+  background:linear-gradient(90deg,#ff1b2d,rgba(255,27,45,.08),transparent);
+}
+
+.featuresLabel{
+  margin:0 0 12px;
+  color:#777;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:2px;
+}
+
+.featuresList{
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:grid;
+  gap:10px;
+  overflow:auto;
+  flex:1;
+}
+
+.featuresList li{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  padding:10px 11px;
+  border:1px solid #222;
+  border-radius:10px;
+  background:rgba(255,255,255,.018);
+  color:#cfcfcf;
+  font-size:13px;
+  line-height:1.4;
+}
+
+.featuresList li span{
+  flex:0 0 auto;
+  color:#ff3347;
+  font-weight:1000;
+  text-shadow:0 0 10px rgba(255,27,45,.35);
+}
+
+.backBtn{
+  width:100%;
+  margin-top:16px;
+  color:#ff3347;
+  border-color:rgba(255,27,45,.3);
+}
+
+@media(max-width:700px){
+  .cardFlip,
+  .cardFace,
+  .featuresBack{
+    min-height:510px;
+  }
+
+  .cardActionRow{
+    grid-template-columns:1fr 1.25fr;
+  }
+}
+
+@media(max-width:430px){
+  .cardFlip,
+  .cardFace,
+  .featuresBack{
+    min-height:500px;
+  }
+
+  .featuresBack{
+    padding:20px 16px 16px;
+  }
+
+  .featuresHeader h3{
+    font-size:19px;
+  }
+
+  .featuresList li{
+    font-size:12px;
+  }
+}

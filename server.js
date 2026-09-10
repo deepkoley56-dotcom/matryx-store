@@ -55,6 +55,7 @@ async function initDb() {
       video TEXT DEFAULT '',
       plans JSONB NOT NULL DEFAULT '[]'::jsonb,
       tag TEXT DEFAULT '',
+      features TEXT DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
@@ -81,6 +82,9 @@ async function initDb() {
 
     ALTER TABLE products
       ADD COLUMN IF NOT EXISTS tag TEXT DEFAULT '';
+
+    ALTER TABLE products
+      ADD COLUMN IF NOT EXISTS features TEXT DEFAULT '';
 
     ALTER TABLE orders
       ADD COLUMN IF NOT EXISTS delivery_key TEXT DEFAULT '';
@@ -276,7 +280,8 @@ app.post("/api/admin/products", auth, async (req, res) => {
       video,
       plans,
       active = true,
-      tag = ""
+      tag = "",
+      features = ""
     } = req.body;
 
     const cleanedPlans = cleanPlans(plans);
@@ -293,8 +298,8 @@ app.post("/api/admin/products", auth, async (req, res) => {
 
     const r = await pool.query(
       `INSERT INTO products
-       (name, description, price, image, stock, video, plans, active, tag)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       (name, description, price, image, stock, video, plans, active, tag, features)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        RETURNING *`,
       [
         name,
@@ -305,7 +310,8 @@ app.post("/api/admin/products", auth, async (req, res) => {
         video || "",
         JSON.stringify(cleanedPlans),
         !!active,
-        String(tag || "").trim()
+        String(tag || "").trim(),
+        String(features || "").trim()
       ]
     );
 
@@ -330,7 +336,8 @@ app.put("/api/admin/products/:id", auth, async (req, res) => {
       video,
       plans,
       active = true,
-      tag = ""
+      tag = "",
+      features = ""
     } = req.body;
 
     const cleanedPlans = cleanPlans(plans);
@@ -355,8 +362,9 @@ app.put("/api/admin/products/:id", auth, async (req, res) => {
            video=$6,
            plans=$7,
            active=$8,
-           tag=$9
-       WHERE id=$10
+           tag=$9,
+           features=$10
+       WHERE id=$11
        RETURNING *`,
       [
         name,
@@ -368,6 +376,7 @@ app.put("/api/admin/products/:id", auth, async (req, res) => {
         JSON.stringify(cleanedPlans),
         !!active,
         String(tag || "").trim(),
+        String(features || "").trim(),
         req.params.id
       ]
     );

@@ -103,11 +103,49 @@ function productPlans(p) {
     : [];
 }
 
+
+function productFeatures(p) {
+  let raw = p.features ?? p.feature ?? "";
+
+  if (Array.isArray(raw)) {
+    raw = raw.map(x => String(x).trim()).filter(Boolean);
+  } else {
+    raw = String(raw || "")
+      .split(/\r?\n|•|·/)
+      .map(x => x.replace(/^[\s\-✓✔]+/, "").trim())
+      .filter(Boolean);
+  }
+
+  if (!raw.length && p.description) {
+    raw = String(p.description)
+      .split(/[\r\n]+|(?<=[.!?])\s+/)
+      .map(x => x.replace(/^[\s\-✓✔]+/, "").trim())
+      .filter(Boolean);
+  }
+
+  if (!raw.length) {
+    raw = [
+      "Premium digital product",
+      p.active ? "Currently available" : "Currently offline",
+      productPlans(p).length ? "Multiple plans available" : "Simple one-time purchase"
+    ];
+  }
+
+  return raw.slice(0, 8);
+}
+
+function toggleProductFeatures(btn, showBack) {
+  const card = btn.closest(".card");
+  if (!card) return;
+  card.classList.toggle("flipped", showBack);
+}
+
 function renderProducts() {
   $("products").innerHTML =
     products.map(p => {
 
       const plans = productPlans(p);
+      const features = productFeatures(p);
 
       const mediaHTML = p.video
         ? `
@@ -156,46 +194,96 @@ function renderProducts() {
           </div>
         `;
 
+      const featuresHTML = features.map(feature => `
+        <li><span>✓</span>${esc(feature)}</li>
+      `).join("");
+
       return `
         <article
           class="card"
           data-product-id="${p.id}"
           data-selected-plan="0"
         >
+          <div class="cardFlip">
 
-          ${
-            p.tag
-              ? `<div class="productTag">${esc(p.tag)}</div>`
-              : ""
-          }
+            <div class="cardFace cardFront">
 
-          ${mediaHTML}
+              ${
+                p.tag
+                  ? `<div class="productTag">${esc(p.tag)}</div>`
+                  : ""
+              }
 
-          <div class="cardBody">
+              ${mediaHTML}
 
-            <h3>
-              ${esc(p.name)}
-            </h3>
+              <div class="cardBody">
 
-            <p class="muted">
-              ${esc(p.description || "")}
-            </p>
+                <h3>
+                  ${esc(p.name)}
+                </h3>
 
-            ${planHTML}
+                <p class="muted">
+                  ${esc(p.description || "")}
+                </p>
 
-            <div class="productStatus ${p.active ? "online" : "offline"}">
-              <span class="statusDot"></span>
-              <span>STATUS:</span>
-              <b>${p.active ? "ONLINE" : "OFFLINE"}</b>
+                ${planHTML}
+
+                <div class="productStatus ${p.active ? "online" : "offline"}">
+                  <span class="statusDot"></span>
+                  <span>STATUS:</span>
+                  <b>${p.active ? "ONLINE" : "OFFLINE"}</b>
+                </div>
+
+                <div class="cardActionRow">
+                  <button
+                    type="button"
+                    class="featureBtn"
+                    onclick="toggleProductFeatures(this, true)"
+                  >
+                    FEATURES
+                  </button>
+
+                  <button
+                    class="primary"
+                    ${!p.active ? "disabled" : ""}
+                    onclick="addCart(${p.id})"
+                  >
+                    ${p.active ? "ADD TO CART" : "OFFLINE"}
+                  </button>
+                </div>
+
+              </div>
             </div>
 
-            <button
-              class="primary"
-              ${!p.active ? "disabled" : ""}
-              onclick="addCart(${p.id})"
-            >
-              ${p.active ? "ADD TO CART" : "OFFLINE"}
-            </button>
+            <div class="cardFace cardBack">
+              <div class="featuresBack">
+
+                <div class="featuresHeader">
+                  <div>
+                    <small>PRODUCT DETAILS</small>
+                    <h3>${esc(p.name)}</h3>
+                  </div>
+                  <span class="featuresIcon">✦</span>
+                </div>
+
+                <div class="featuresDivider"></div>
+
+                <p class="featuresLabel">FEATURES</p>
+
+                <ul class="featuresList">
+                  ${featuresHTML}
+                </ul>
+
+                <button
+                  type="button"
+                  class="backBtn"
+                  onclick="toggleProductFeatures(this, false)"
+                >
+                  ← BACK
+                </button>
+
+              </div>
+            </div>
 
           </div>
         </article>
@@ -732,6 +820,15 @@ async function loadAdminProducts() {
       >
 
       <textarea
+        id="pfeatures"
+        placeholder="Features — one per line&#10;Example:&#10;Premium Quality&#10;Fast Delivery&#10;Safe &amp; Secure&#10;24/7 Support"
+      ></textarea>
+
+      <p class="planHelp">
+        Add one product feature per line.
+      </p>
+
+      <textarea
         id="plans"
         placeholder="Plans - one per line&#10;Example:&#10;1 Hour | 50&#10;1 Day | 100&#10;7 Days | 300&#10;30 Days | 500"
       ></textarea>
@@ -872,7 +969,8 @@ async function createProduct() {
         plans,
         price: plans[0]?.price || 0,
         active: $("ps").value === "true",
-        tag: $("ptag").value.trim()
+        tag: $("ptag").value.trim(),
+        features: $("pfeatures").value.trim()
       })
     });
 
@@ -952,6 +1050,15 @@ function editProduct(p) {
       >
 
       <textarea
+        id="efeatures"
+        placeholder="Features — one per line"
+      >${esc(p.features || "")}</textarea>
+
+      <p class="planHelp">
+        Add one product feature per line.
+      </p>
+
+      <textarea
         id="eplans"
         placeholder="1 Hour | 50&#10;1 Day | 100"
       >${esc(plansToText(p.plans))}</textarea>
@@ -1026,7 +1133,8 @@ async function updateProduct(id) {
           plans,
           price: plans[0]?.price || 0,
           active: $("es").value === "true",
-          tag: $("etag").value.trim()
+          tag: $("etag").value.trim(),
+          features: $("efeatures").value.trim()
         })
       }
     );
