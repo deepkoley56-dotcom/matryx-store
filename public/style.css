@@ -2389,3 +2389,21 @@ html{
   .storeOfflineCard h2{font-size:24px;letter-spacing:3px}
   .storeControlHead{flex-direction:column}
 }
+
+
+/* ADMIN ACCESS WHILE STORE IS OFFLINE */
+.offlineAdminBtn{
+  margin-top:22px!important;
+  min-width:190px!important;
+  padding:12px 20px!important;
+  border:1px solid rgba(255,27,45,.55)!important;
+  border-radius:10px!important;
+  background:linear-gradient(180deg,#1b090b,#0d0708)!important;
+  color:#ff1b2d!important;
+  font-weight:900!important;
+  font-size:11px!important;
+  letter-spacing:2px!important;
+  cursor:pointer!important;
+  box-shadow:0 0 20px rgba(255,27,45,.12)!important;
+}
+.offlineAdminBtn:active{transform:scale(.97)}
