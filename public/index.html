@@ -208,13 +208,25 @@ body > *:not(#fire-particles){
   </div>
 </section>
 
+<div id="storeOfflineOverlay" class="storeOfflineOverlay hidden" aria-hidden="true">
+  <div class="storeOfflineCard">
+    <div class="storeOfflineIcon">✦</div>
+    <p class="storeOfflineEyebrow">MATRYX STORE</p>
+    <h2>STORE <span>OFFLINE</span></h2>
+    <p>The store is temporarily unavailable. Please check back soon.</p>
+    <div class="storeOfflineLine"></div>
+    <small>Purchasing is currently disabled</small>
+  </div>
+</div>
+
 <section id="adminView" class="hidden">
   <div id="adminLogin">
     <div class="adminCard"><h2>Admin Login</h2><input id="aUser" placeholder="Username"><input id="aPass" type="password" placeholder="Password"><button class="primary" onclick="adminLogin()">LOGIN</button><p id="adminMsg"></p></div>
   </div>
   <div id="dashboard" class="hidden">
     <div class="sectionTitle"><h2>Admin Dashboard</h2><button onclick="adminLogout()">LOGOUT</button></div>
-    <div class="adminTabs"><button onclick="adminTab('products')">PRODUCTS</button><button onclick="adminTab('orders')">ORDERS</button></div>
+    <div class="adminTabs"><button onclick="adminTab('products')">PRODUCTS</button><button onclick="adminTab('orders')">ORDERS</button><button onclick="adminTab('store')">STORE STATUS</button></div>
+    <div id="storeAdmin" class="hidden"></div>
     <div id="productAdmin"></div><div id="orderAdmin" class="hidden"></div>
   </div>
 </section>

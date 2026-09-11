@@ -59,6 +59,16 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS store_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      store_open BOOLEAN NOT NULL DEFAULT TRUE,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    INSERT INTO store_settings (id, store_open)
+    VALUES (1, TRUE)
+    ON CONFLICT (id) DO NOTHING;
+
     CREATE TABLE IF NOT EXISTS orders (
       id SERIAL PRIMARY KEY,
       customer_name TEXT NOT NULL,
@@ -157,13 +167,52 @@ function cleanPlans(plans) {
     );
 }
 
-app.get("/api/config", (req, res) => {
-  res.json({
-    storeName: process.env.STORE_NAME || "MATRYX STORE",
-    upiId: process.env.UPI_ID || "",
-    whatsapp: process.env.WHATSAPP_NUMBER || "",
-    currency: process.env.CURRENCY || "INR"
-  });
+app.get("/api/config", async (req, res) => {
+  try {
+    const r = await pool.query(
+      "SELECT store_open FROM store_settings WHERE id=1"
+    );
+
+    res.json({
+      storeName: process.env.STORE_NAME || "MATRYX STORE",
+      upiId: process.env.UPI_ID || "",
+      whatsapp: process.env.WHATSAPP_NUMBER || "",
+      currency: process.env.CURRENCY || "INR",
+      storeOpen: r.rows[0]?.store_open !== false
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+app.get("/api/admin/store-status", auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      "SELECT store_open FROM store_settings WHERE id=1"
+    );
+    res.json({ storeOpen: r.rows[0]?.store_open !== false });
+  } catch (e) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+app.put("/api/admin/store-status", auth, async (req, res) => {
+  try {
+    const storeOpen = req.body.storeOpen !== false;
+    const r = await pool.query(
+      `INSERT INTO store_settings (id, store_open, updated_at)
+       VALUES (1, $1, NOW())
+       ON CONFLICT (id)
+       DO UPDATE SET store_open=EXCLUDED.store_open, updated_at=NOW()
+       RETURNING store_open`,
+      [storeOpen]
+    );
+    res.json({ ok: true, storeOpen: r.rows[0].store_open });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Could not update store status" });
+  }
 });
 
 app.get("/api/products", async (req, res) => {
@@ -413,6 +462,18 @@ app.delete("/api/admin/products/:id", auth, async (req, res) => {
 });
 
 app.post("/api/orders", async (req, res) => {
+  try {
+    const storeCheck = await pool.query(
+      "SELECT store_open FROM store_settings WHERE id=1"
+    );
+    if (storeCheck.rows[0] && storeCheck.rows[0].store_open === false) {
+      return res.status(403).json({ error: "Store is currently offline" });
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Could not check store status" });
+  }
+
   const {
     customerName,
     customerPhone,

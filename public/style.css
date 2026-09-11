@@ -2327,3 +2327,65 @@ html{
   .introOrbitTwo{inset:-33px}
   .introLoading{margin-top:22px}
 }
+
+
+/* GLOBAL STORE ON/OFF CONTROL */
+.storeOfflineOverlay{
+  position:fixed;
+  inset:0;
+  z-index:999998;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:22px;
+  background:rgba(3,3,3,.86);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+}
+.storeOfflineOverlay.hidden{display:none!important}
+.storeOfflineCard{
+  width:min(520px,100%);
+  padding:42px 28px 34px;
+  text-align:center;
+  border:1px solid rgba(255,27,45,.34);
+  border-radius:24px;
+  background:linear-gradient(145deg,rgba(25,25,25,.96),rgba(8,8,8,.96));
+  box-shadow:0 0 55px rgba(255,27,45,.16),inset 0 1px 0 rgba(255,255,255,.06);
+}
+.storeOfflineIcon{
+  width:66px;height:66px;margin:0 auto 18px;
+  display:grid;place-items:center;border-radius:50%;
+  color:#ff1b2d;font-size:25px;
+  border:1px solid rgba(255,27,45,.4);
+  box-shadow:0 0 28px rgba(255,27,45,.2);
+}
+.storeOfflineEyebrow{margin:0 0 10px;color:#777;font-size:9px;letter-spacing:4px;font-weight:900}
+.storeOfflineCard h2{margin:0;font-size:31px;letter-spacing:5px}
+.storeOfflineCard h2 span{color:#ff1b2d;text-shadow:0 0 20px rgba(255,27,45,.4)}
+.storeOfflineCard p:not(.storeOfflineEyebrow){color:#999;line-height:1.7;margin:15px auto 0;max-width:390px}
+.storeOfflineLine{width:110px;height:1px;margin:22px auto;background:linear-gradient(90deg,transparent,#ff1b2d,transparent);box-shadow:0 0 10px rgba(255,27,45,.5)}
+.storeOfflineCard small{color:#555;letter-spacing:2px;font-size:8px;font-weight:800}
+
+.storeControlCard{
+  margin-top:16px;padding:24px;border-radius:20px;
+  border:1px solid rgba(255,255,255,.08);
+  background:linear-gradient(145deg,rgba(20,20,20,.94),rgba(9,9,9,.94));
+  box-shadow:0 18px 45px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.storeControlHead{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.storeControlHead small{color:#666;letter-spacing:2px;font-size:8px;font-weight:900}
+.storeControlHead h3{margin:7px 0 5px;font-size:22px}
+.storeControlHead p{margin:0;color:#888;font-size:13px;line-height:1.5}
+.storeControlStatus{white-space:nowrap;padding:9px 12px;border-radius:999px;font-size:9px;font-weight:900;letter-spacing:1px;border:1px solid rgba(255,255,255,.08)}
+.storeControlStatus.online{color:#35e58b;background:rgba(53,229,139,.08)}
+.storeControlStatus.offline{color:#ff1b2d;background:rgba(255,27,45,.08)}
+.storeToggle{width:100%;margin-top:22px;min-height:48px;border-radius:12px;font-weight:900;letter-spacing:1px;cursor:pointer}
+.storeToggle.isOn{border:1px solid rgba(255,27,45,.35);color:#ff1b2d;background:rgba(255,27,45,.08);box-shadow:0 0 18px rgba(255,27,45,.08)}
+.storeToggle.isOff{border:1px solid rgba(53,229,139,.3);color:#35e58b;background:rgba(53,229,139,.07)}
+.storeControlNote{margin-top:14px;color:#555;text-align:center;font-size:10px;line-height:1.5}
+
+@media(max-width:600px){
+  .storeOfflineCard{padding:34px 20px 28px}
+  .storeOfflineCard h2{font-size:24px;letter-spacing:3px}
+  .storeControlHead{flex-direction:column}
+}

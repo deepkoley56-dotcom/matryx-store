@@ -95,6 +95,7 @@ async function load() {
 
   renderProducts();
   updateCount();
+  applyStoreStatus();
 }
 
 function productPlans(p) {
@@ -336,6 +337,11 @@ function getSelectedPlan(id) {
 }
 
 function addCart(id) {
+  if (config.storeOpen === false) {
+    alert("Store is currently offline");
+    return;
+  }
+
   const p = products.find(
     x => x.id === id
   );
@@ -513,6 +519,11 @@ function removeCart(index) {
 }
 
 function payUPI() {
+  if (config.storeOpen === false) {
+    alert("Store is currently offline");
+    return;
+  }
+
   if (!config.upiId) {
     alert(
       "Admin has not configured UPI ID yet."
@@ -690,6 +701,40 @@ async function adminLogin() {
   }
 }
 
+function applyStoreStatus() {
+  const isOpen = config.storeOpen !== false;
+  const overlay = $("storeOfflineOverlay");
+
+  if (overlay) {
+    overlay.classList.toggle("hidden", isOpen);
+    overlay.setAttribute("aria-hidden", isOpen ? "true" : "false");
+  }
+
+  document.body.classList.toggle("storeIsOffline", !isOpen);
+
+  document.querySelectorAll(".card .primary").forEach(btn => {
+    if (!isOpen) {
+      btn.disabled = true;
+      btn.textContent = "STORE OFFLINE";
+    } else {
+      const card = btn.closest(".card");
+      const id = Number(card?.dataset.productId);
+      const p = products.find(x => x.id === id);
+      if (p) {
+        btn.disabled = !p.active;
+        btn.textContent = p.active ? "ADD TO CART" : "OFFLINE";
+      }
+    }
+  });
+}
+
+async function refreshStoreStatus() {
+  const r = await api("/api/config");
+  config.storeOpen = r.storeOpen !== false;
+  applyStoreStatus();
+  return config.storeOpen;
+}
+
 async function loadDashboard() {
   $("adminLogin")
     .classList.add("hidden");
@@ -701,6 +746,16 @@ async function loadDashboard() {
 }
 
 function adminTab(tab) {
+  const storeAdmin = $("storeAdmin");
+  if (storeAdmin) storeAdmin.classList.toggle("hidden", tab !== "store");
+
+  if (tab === "store") {
+    $("productAdmin").classList.add("hidden");
+    $("orderAdmin").classList.add("hidden");
+    loadStoreAdmin();
+    return;
+  }
+
   if (tab === "products") {
     $("productAdmin")
       .classList.remove("hidden");
@@ -718,6 +773,60 @@ function adminTab(tab) {
       .classList.remove("hidden");
 
     loadOrders();
+  }
+}
+
+async function loadStoreAdmin() {
+  const box = $("storeAdmin");
+  if (!box) return;
+
+  try {
+    const r = await api("/api/admin/store-status", {
+      headers: { Authorization: "Bearer " + adminToken }
+    });
+
+    const open = r.storeOpen !== false;
+
+    box.innerHTML = `
+      <div class="storeControlCard">
+        <div class="storeControlHead">
+          <div>
+            <small>GLOBAL STORE CONTROL</small>
+            <h3>Store Status</h3>
+            <p>${open ? "Customers can browse and purchase products." : "Customers cannot purchase while the store is offline."}</p>
+          </div>
+          <div class="storeControlStatus ${open ? "online" : "offline"}">
+            <span class="statusDot"></span> ${open ? "ONLINE" : "OFFLINE"}
+          </div>
+        </div>
+
+        <button class="storeToggle ${open ? "isOn" : "isOff"}" onclick="toggleStoreStatus(${open ? "false" : "true"})">
+          ${open ? "TURN STORE OFF" : "TURN STORE ON"}
+        </button>
+
+        <div class="storeControlNote">
+          This setting is saved in PostgreSQL and remains after a restart or redeploy.
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    box.innerHTML = `<div class="storeControlCard"><p class="errorText">${esc(e.message)}</p></div>`;
+  }
+}
+
+async function toggleStoreStatus(storeOpen) {
+  try {
+    await api("/api/admin/store-status", {
+      method: "PUT",
+      headers: { Authorization: "Bearer " + adminToken },
+      body: JSON.stringify({ storeOpen })
+    });
+
+    config.storeOpen = !!storeOpen;
+    applyStoreStatus();
+    await loadStoreAdmin();
+  } catch (e) {
+    alert(e.message);
   }
 }
 
