@@ -524,38 +524,10 @@ function payUPI() {
     return;
   }
 
-  if (!config.upiId) {
-    alert(
-      "Admin has not configured UPI ID yet."
-    );
-    return;
-  }
-
   if (!cart.length) {
     alert("Cart is empty.");
     return;
   }
-
-  const total = cart.reduce(
-    (s, x) =>
-      s +
-      Number(
-        x.planPrice || 0
-      ) * x.qty,
-    0
-  );
-
-  const uri =
-    `upi://pay?pa=${encodeURIComponent(
-      config.upiId
-    )}` +
-    `&pn=${encodeURIComponent(
-      config.storeName
-    )}` +
-    `&am=${total.toFixed(2)}` +
-    `&cu=INR`;
-
-  location.href = uri;
 }
 
 async function placeOrder() {

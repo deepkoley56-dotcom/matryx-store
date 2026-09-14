@@ -8,6 +8,12 @@
 </head>
 <body>
 
+<!-- Single continuous portrait video: starts at page load and stays playing under the original intro and store -->
+<video id="siteVideoBg" autoplay muted loop playsinline preload="auto" aria-hidden="true">
+  <source src="/goku-portrait.mp4" type="video/mp4">
+</video>
+<div id="siteVideoShade" aria-hidden="true"></div>
+
 <div id="storeIntro">
   <div class="introAmbient introAmbientOne"></div>
   <div class="introAmbient introAmbientTwo"></div>
@@ -34,6 +40,25 @@
 </div>
 <canvas id="fire-particles"></canvas>
 <style>
+/* Continuous portrait video background */
+#siteVideoBg{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center center;
+  pointer-events:none;
+  z-index:-2;
+  background:#050505;
+}
+#siteVideoShade{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  background:linear-gradient(180deg,rgba(0,0,0,.72),rgba(5,5,5,.50) 45%,rgba(5,5,5,.84));
+}
 #fire-particles{
   position:fixed;
   inset:0;
@@ -42,7 +67,7 @@
   pointer-events:none;
   z-index:0;
 }
-body > *:not(#fire-particles){
+body > *:not(#fire-particles):not(#siteVideoBg):not(#siteVideoShade){
   position:relative;
   z-index:1;
 }
@@ -174,8 +199,12 @@ body > *:not(#fire-particles){
     </div>
     <div class="paybox">
       <div><strong>UPI ID:</strong> <span id="upiText">Not configured</span></div>
-      <p>Pay using your UPI app, then enter the transaction ID above.</p>
-      <button class="primary" onclick="payUPI()">OPEN UPI PAYMENT</button>
+      <p>Scan the QR code with any UPI app and complete the payment.</p>
+      <div class="upiScanner">
+        <img src="/upi-qr.png" alt="UPI QR Code" class="upiScannerImage">
+        <div class="upiScannerTitle">SCAN TO PAY</div>
+        <div class="upiScannerNote">Use any UPI app to scan this QR</div>
+      </div>
     </div>
     <div class="total">Total: <span id="cartTotal">₹0.00</span></div>
     <button class="primary big" onclick="placeOrder()">PLACE ORDER + WHATSAPP</button>
@@ -216,7 +245,6 @@ body > *:not(#fire-particles){
     <p>The store is temporarily unavailable. Please check back soon.</p>
     <div class="storeOfflineLine"></div>
     <small>Purchasing is currently disabled</small>
-    <button class="offlineAdminBtn" onclick="openAdmin(); document.getElementById('storeOfflineOverlay').classList.add('hidden'); document.getElementById('storeOfflineOverlay').setAttribute('aria-hidden','true');">ADMIN LOGIN</button>
   </div>
 </div>
 
