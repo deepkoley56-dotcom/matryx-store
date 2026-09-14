@@ -560,6 +560,26 @@ async function placeOrder() {
   }));
 
   try {
+    const screenshotEl = $("cScreenshot");
+    let paymentScreenshot = "";
+    if (!screenshotEl.files.length) {
+      return alert("Payment screenshot upload karo.");
+    }
+
+    const form = new FormData();
+    form.append("screenshot", screenshotEl.files[0]);
+    $("cScreenshotStatus").textContent = "Uploading payment screenshot...";
+    const proofResponse = await fetch("/api/payment-screenshot", {
+      method: "POST",
+      body: form
+    });
+    const proof = await proofResponse.json();
+    if (!proofResponse.ok || !proof.url) {
+      throw new Error(proof.error || "Screenshot upload failed");
+    }
+    paymentScreenshot = proof.url;
+    $("cScreenshotStatus").textContent = "✓ Payment screenshot uploaded";
+
     const r = await api(
       "/api/orders",
       {
@@ -572,7 +592,8 @@ async function placeOrder() {
           transactionId:
             $("cTxn").value.trim(),
           notes:
-            $("cNotes").value.trim()
+            $("cNotes").value.trim(),
+          paymentScreenshot
         })
       }
     );
@@ -616,26 +637,27 @@ async function placeOrder() {
 
     saveCart();
 
-    $("orderResult").innerHTML =
-      `<div class="success">
-        Order #${r.orderId} created successfully.
-        Opening WhatsApp…
-      </div>`;
+    // Automatically open Orders and show the order that was just placed.
+    $("historyOrderId").value = String(r.orderId);
+    $("historyPhone").value = customerPhone;
+    openHistory();
+    await loadHistory();
 
-    renderCart();
+    $("historyResult").insertAdjacentHTML(
+      "afterbegin",
+      `<div class="success orderPlacedNotice">Order #${r.orderId} placed successfully.</div>`
+    );
 
+    // Keep the existing WhatsApp order message available from the Orders section.
     if (config.whatsapp) {
-      setTimeout(() => {
-        location.href =
-          `https://wa.me/${
-            config.whatsapp.replace(
-              /\D/g,
-              ""
-            )
-          }?text=${
-            encodeURIComponent(msg)
-          }`;
-      }, 500);
+      const waUrl =
+        `https://wa.me/${
+          config.whatsapp.replace(/\D/g, "")
+        }?text=${encodeURIComponent(msg)}`;
+      $("historyResult").insertAdjacentHTML(
+        "afterbegin",
+        `<a class="primary big orderWhatsAppBtn" href="${waUrl}" target="_blank" rel="noopener">OPEN WHATSAPP ORDER →</a>`
+      );
     }
 
   } catch (e) {
@@ -724,7 +746,16 @@ function adminTab(tab) {
   if (tab === "store") {
     $("productAdmin").classList.add("hidden");
     $("orderAdmin").classList.add("hidden");
+    $("keyAdmin").classList.add("hidden");
     loadStoreAdmin();
+    return;
+  }
+
+  if (tab === "keys") {
+    $("productAdmin").classList.add("hidden");
+    $("orderAdmin").classList.add("hidden");
+    $("keyAdmin").classList.remove("hidden");
+    loadKeyAdmin();
     return;
   }
 
@@ -733,6 +764,8 @@ function adminTab(tab) {
       .classList.remove("hidden");
 
     $("orderAdmin")
+      .classList.add("hidden");
+    $("keyAdmin")
       .classList.add("hidden");
 
     loadAdminProducts();
@@ -743,6 +776,8 @@ function adminTab(tab) {
 
     $("orderAdmin")
       .classList.remove("hidden");
+    $("keyAdmin")
+      .classList.add("hidden");
 
     loadOrders();
   }
@@ -843,6 +878,55 @@ function parsePlans(text) {
         Number.isFinite(p.price) &&
         p.price >= 0
     );
+}
+
+async function loadKeyAdmin() {
+  const box = $("keyAdmin");
+  if (!box) return;
+  try {
+    const rows = await api("/api/admin/keys", { headers: { Authorization: "Bearer " + adminToken } });
+    box.innerHTML = `
+      <div class="productForm">
+        <h3>KEY INVENTORY</h3>
+        <p class="planHelp">Add one unused key per line. Delivery uses the customer's selected plan automatically.</p>
+        <input id="keyPlanName" placeholder="Plan name — e.g. 1 Hour">
+        <textarea id="keyList" placeholder="KEY-001
+KEY-002
+KEY-003"></textarea>
+        <button class="primary" onclick="addKeys()">ADD KEYS</button>
+      </div>
+      <div class="productForm">
+        <h3>AVAILABLE KEYS</h3>
+        ${rows.length ? rows.map(r => `<div class="keyStockRow"><b>${esc(r.plan_name)}</b><span>${r.available} available / ${r.total} total</span></div>`).join("") : `<p class="muted">No keys added yet.</p>`}
+      </div>`;
+  } catch (e) { box.innerHTML = `<div class="productForm"><p class="errorText">${esc(e.message)}</p></div>`; }
+}
+
+async function addKeys() {
+  const planName = $("keyPlanName").value.trim();
+  const raw = $("keyList").value.split("\n").map(x => x.trim()).filter(Boolean);
+  if (!planName || !raw.length) return alert("Plan name aur keys enter karo.");
+  try {
+    const r = await api("/api/admin/keys", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + adminToken },
+      body: JSON.stringify({ planName, keys: raw })
+    });
+    alert(`${r.added || 0} keys added.`);
+    loadKeyAdmin();
+  } catch (e) { alert(e.message); }
+}
+
+async function deliverKey(id) {
+  if (!confirm("PhonePe payment ko manually verify karne ke baad hi continue karo. This will mark the order PAID and deliver the matching plan key. Continue?")) return;
+  try {
+    const r = await api("/api/admin/orders/" + id + "/deliver-key", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + adminToken }
+    });
+    alert(r.alreadyDelivered ? "Key already delivered." : "Key delivered successfully.");
+    await loadOrders();
+  } catch (e) { alert(e.message); }
 }
 
 async function loadAdminProducts() {
@@ -1305,6 +1389,14 @@ async function loadOrders() {
             ${esc(o.transaction_id || "Not provided")}
           </p>
 
+          ${o.payment_screenshot ? `
+            <div class="paymentProofAdmin">
+              <div class="deliveryLabel">PAYMENT SCREENSHOT</div>
+              <a href="${escAttr(o.payment_screenshot)}" target="_blank" rel="noopener">
+                <img src="${escAttr(o.payment_screenshot)}" alt="Payment screenshot">
+              </a>
+            </div>` : `<p class="muted">No payment screenshot uploaded.</p>`}
+
           <div class="deliveryAdminBox">
 
             <h4>DELIVERY ACCESS</h4>
@@ -1367,6 +1459,10 @@ async function loadOrders() {
               )"
             >
               MARK PAID
+            </button>
+
+            <button class="primary" onclick="deliverKey(${o.id})">
+              VERIFY PAYMENT &amp; DELIVER KEY
             </button>
 
             <button
@@ -1537,6 +1633,88 @@ load().catch(
 
 /* MATRYX CUSTOMER ORDER HISTORY */
 
+let historyPollTimer = null;
+let lastHistorySnapshot = "";
+
+function stopHistoryPolling() {
+  if (historyPollTimer) {
+    clearInterval(historyPollTimer);
+    historyPollTimer = null;
+  }
+}
+
+function startHistoryPolling() {
+  stopHistoryPolling();
+
+  historyPollTimer = setInterval(async () => {
+    const historyView = $("historyView");
+    if (!historyView || historyView.classList.contains("hidden")) return;
+
+    const orderId = $("historyOrderId").value.trim();
+    const phone = $("historyPhone").value.trim();
+    if (!orderId || !phone) return;
+
+    try {
+      const result = await api("/api/order-history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId, phone })
+      });
+
+      if (!result || result.error) return;
+
+      const snapshot = JSON.stringify({
+        status: result.order_status,
+        payment: result.payment_status,
+        key: result.delivery_key || "",
+        expires: result.delivery_expires_at || ""
+      });
+
+      if (snapshot === lastHistorySnapshot) return;
+      lastHistorySnapshot = snapshot;
+      updateHistoryLive(result);
+    } catch (e) {
+      // Keep the currently displayed order if a background refresh fails.
+    }
+  }, 3000);
+}
+
+function updateHistoryLive(o) {
+  const statusEl = document.querySelector("#historyResult .historyStatus");
+  if (statusEl) statusEl.textContent = o.order_status || "";
+
+  const resultEl = $("historyResult");
+  if (!resultEl) return;
+
+  const existingDelivery = resultEl.querySelector(".deliveryCustomerBox");
+  const existingPending = resultEl.querySelector(".deliveryPending");
+
+  if (o.delivery_key) {
+    const expiry = o.delivery_expires_at
+      ? `<br>Expires: ${esc(new Date(o.delivery_expires_at).toLocaleString())}`
+      : "";
+    const html = `
+      <div class="deliveryCustomerBox">
+        <div class="deliveryLabel">DELIVERY ACCESS</div>
+        <div class="deliveryKey">${esc(o.delivery_key)}</div>
+        ${expiry}
+      </div>`;
+
+    if (existingDelivery) {
+      existingDelivery.outerHTML = html;
+    } else if (existingPending) {
+      existingPending.outerHTML = html;
+    } else {
+      resultEl.insertAdjacentHTML("beforeend", html);
+    }
+  } else if (!existingDelivery && !existingPending) {
+    resultEl.insertAdjacentHTML(
+      "beforeend",
+      `<div class="deliveryPending">Delivery key has not been assigned yet.</div>`
+    );
+  }
+}
+
 function openHistory() {
   $("shopView").classList.add("hidden");
   $("cartView").classList.add("hidden");
@@ -1544,6 +1722,8 @@ function openHistory() {
   $("historyView").classList.remove("hidden");
 
   $("historyResult").innerHTML = "";
+  lastHistorySnapshot = "";
+  startHistoryPolling();
 }
 
 async function loadHistory() {
@@ -1581,6 +1761,13 @@ async function loadHistory() {
     }
 
     renderHistoryOrder(result);
+    lastHistorySnapshot = JSON.stringify({
+      status: result.order_status,
+      payment: result.payment_status,
+      key: result.delivery_key || "",
+      expires: result.delivery_expires_at || ""
+    });
+    startHistoryPolling();
 
   } catch (e) {
     $("historyResult").innerHTML =
@@ -1589,12 +1776,6 @@ async function loadHistory() {
 }
 
 function renderHistoryOrder(o) {
-  const remainingSeconds =
-    o.remainingSeconds !== null &&
-    o.remainingSeconds !== undefined
-      ? Number(o.remainingSeconds)
-      : null;
-
   $("historyResult").innerHTML = `
     <div class="historyOrderCard">
 
@@ -1633,19 +1814,8 @@ function renderHistoryOrder(o) {
         o.delivery_key
           ? `
             <div class="deliveryCustomerBox">
-
-              <div class="deliveryLabel">
-                DELIVERY ACCESS
-              </div>
-
-              <div class="deliveryKey">
-                ${esc(o.delivery_key)}
-              </div>
-
-              <div id="deliveryTimer-${o.id}" class="deliveryTimer">
-                Checking...
-              </div>
-
+              <div class="deliveryLabel">DELIVERY ACCESS</div>
+              <div class="deliveryKey">${esc(o.delivery_key)}</div>
             </div>
           `
           : `
@@ -1657,51 +1827,4 @@ function renderHistoryOrder(o) {
 
     </div>
   `;
-
-  if (remainingSeconds !== null) {
-    startDeliveryTimer(
-      o.id,
-      remainingSeconds
-    );
-  }
 }
-
-function startDeliveryTimer(id, remainingSeconds) {
-  const el = $("deliveryTimer-" + id);
-
-  if (!el) return;
-
-  let remaining = Math.max(
-    0,
-    Number(remainingSeconds) || 0
-  );
-
-  function update() {
-    if (remaining <= 0) {
-      el.textContent = "EXPIRED";
-      el.classList.add("expired");
-      return;
-    }
-
-    const days =
-      Math.floor(remaining / 86400);
-
-    const hours =
-      Math.floor((remaining % 86400) / 3600);
-
-    const minutes =
-      Math.floor((remaining % 3600) / 60);
-
-    const seconds =
-      remaining % 60;
-
-    el.textContent =
-      `${days}d ${hours}h ${minutes}m ${seconds}s`;
-
-    remaining--;
-    setTimeout(update, 1000);
-  }
-
-  update();
-}
-

@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const { Pool } = require("pg");
 const multer = require("multer");
 const { v2: cloudinary } = require("cloudinary");
+const TelegramBot = require("node-telegram-bot-api");
 
 const app = express();
 
@@ -27,6 +28,15 @@ const upload = multer({
     }
   }
 });
+
+const screenshotUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) cb(null, true);
+    else cb(new Error("Only image files are allowed"));
+  }
+});
 const PORT = process.env.PORT || 3000;
 
 const pool = new Pool({
@@ -41,6 +51,182 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
 const adminTokens = new Map();
+
+const telegramBotToken = String(process.env.TELEGRAM_BOT_TOKEN || "").trim();
+const telegramAdminChatId = String(process.env.TELEGRAM_ADMIN_CHAT_ID || "").trim();
+let telegramBot = null;
+
+if (telegramBotToken && telegramAdminChatId) {
+  telegramBot = new TelegramBot(telegramBotToken, { polling: true });
+  telegramBot.on("polling_error", err => {
+    console.error("TELEGRAM POLLING ERROR:", err.message);
+  });
+}
+
+function telegramCaption(order) {
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemLines = items.map(i =>
+    `• ${i.name}${i.plan ? ` [${i.plan}]` : ""} × ${i.qty} — ₹${Number(i.line || 0).toFixed(2)}`
+  ).join("\n");
+
+  return [
+    `🛒 MATRYX STORE — ORDER #${order.id}`,
+    "",
+    itemLines || "• No items",
+    "",
+    `Total: ₹${Number(order.subtotal || 0).toFixed(2)}`,
+    `Name: ${order.customer_name}`,
+    `Phone: ${order.customer_phone}`,
+    `UPI Transaction ID: ${order.transaction_id || "Not provided"}`,
+    `Payment: ${order.payment_status}`,
+    `Order: ${order.order_status}`,
+    "",
+    "Check the payment manually, then press CONFIRM to deliver the selected-plan key."
+  ].join("\n");
+}
+
+async function notifyTelegramOrder(orderId) {
+  if (!telegramBot) return;
+
+  try {
+    const r = await pool.query("SELECT * FROM orders WHERE id=$1 LIMIT 1", [orderId]);
+    if (!r.rowCount) return;
+    const order = r.rows[0];
+    const caption = telegramCaption(order);
+    const keyboard = {
+      inline_keyboard: [[
+        { text: "✅ CONFIRM PAYMENT & DELIVER KEY", callback_data: `deliver:${order.id}` }
+      ]]
+    };
+
+    if (order.payment_screenshot) {
+      await telegramBot.sendPhoto(telegramAdminChatId, order.payment_screenshot, {
+        caption,
+        reply_markup: keyboard
+      });
+    } else {
+      await telegramBot.sendMessage(telegramAdminChatId, caption, {
+        reply_markup: keyboard
+      });
+    }
+  } catch (e) {
+    console.error("TELEGRAM ORDER NOTIFY ERROR:", e.message);
+  }
+}
+
+async function deliverOrderKey(orderId) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const orderR = await client.query("SELECT * FROM orders WHERE id=$1 FOR UPDATE", [orderId]);
+    if (!orderR.rowCount) {
+      await client.query("ROLLBACK");
+      return { ok: false, status: 404, error: "Order not found" };
+    }
+
+    const order = orderR.rows[0];
+    if (order.delivery_key) {
+      await client.query("COMMIT");
+      return { ok: true, alreadyDelivered: true, deliveryKey: order.delivery_key, order };
+    }
+
+    const items = Array.isArray(order.items) ? order.items : [];
+    const item = items.find(i => i.plan);
+    if (!item) {
+      await client.query("ROLLBACK");
+      return { ok: false, status: 400, error: "This order has no selected plan." };
+    }
+
+    const planName = String(item.plan);
+    const keyR = await client.query(
+      `SELECT id, delivery_key FROM key_inventory
+       WHERE used=false AND lower(plan_name)=lower($1)
+       ORDER BY id ASC LIMIT 1 FOR UPDATE SKIP LOCKED`,
+      [planName]
+    );
+
+    if (!keyR.rowCount) {
+      await client.query("ROLLBACK");
+      return { ok: false, status: 409, error: `No unused key available for ${planName}` };
+    }
+
+    const key = keyR.rows[0];
+    const minutes = /hour/i.test(planName)
+      ? 60
+      : /day/i.test(planName)
+        ? (Number(planName.match(/\d+(?:\.\d+)?/)?.[0] || 1) * 1440)
+        : null;
+    const expiry = minutes ? new Date(Date.now() + minutes * 60000) : null;
+
+    await client.query(
+      `UPDATE key_inventory SET used=true, used_order_id=$1, used_at=NOW() WHERE id=$2`,
+      [orderId, key.id]
+    );
+
+    const updated = await client.query(
+      `UPDATE orders
+       SET payment_status='PAID', delivery_key=$1, delivery_expires_at=$2, order_status='DELIVERED'
+       WHERE id=$3 RETURNING *`,
+      [key.delivery_key, expiry, orderId]
+    );
+
+    await client.query("COMMIT");
+    return { ok: true, deliveryKey: key.delivery_key, order: updated.rows[0] };
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+if (telegramBot) {
+  telegramBot.on("callback_query", async query => {
+    const chatId = String(query.message?.chat?.id || "");
+    if (chatId !== telegramAdminChatId) {
+      await telegramBot.answerCallbackQuery(query.id, { text: "Unauthorized", show_alert: true }).catch(() => {});
+      return;
+    }
+
+    const data = String(query.data || "");
+    if (!data.startsWith("deliver:")) return;
+    const orderId = Number(data.slice("deliver:".length));
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      await telegramBot.answerCallbackQuery(query.id, { text: "Invalid order", show_alert: true }).catch(() => {});
+      return;
+    }
+
+    try {
+      const result = await deliverOrderKey(orderId);
+      if (!result.ok) {
+        await telegramBot.answerCallbackQuery(query.id, { text: result.error, show_alert: true }).catch(() => {});
+        return;
+      }
+
+      const keyText = result.deliveryKey || result.order?.delivery_key || "Already delivered";
+      await telegramBot.answerCallbackQuery(query.id, { text: "Payment confirmed + key delivered" }).catch(() => {});
+      if (query.message) {
+        const updatedCaption = `${query.message.caption || query.message.text || ""}\n\n✅ DELIVERED\n🔑 Key: ${keyText}`;
+        const edit = {
+          chat_id: telegramAdminChatId,
+          message_id: query.message.message_id,
+          reply_markup: { inline_keyboard: [] }
+        };
+        if (query.message.photo) {
+          edit.caption = updatedCaption;
+          await telegramBot.editMessageCaption(updatedCaption, edit).catch(async () => {
+            await telegramBot.editMessageReplyMarkup(edit.reply_markup, { chat_id: telegramAdminChatId, message_id: query.message.message_id }).catch(() => {});
+          });
+        } else {
+          await telegramBot.editMessageText(updatedCaption, { chat_id: telegramAdminChatId, message_id: query.message.message_id, reply_markup: { inline_keyboard: [] } }).catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.error("TELEGRAM DELIVERY ERROR:", e);
+      await telegramBot.answerCallbackQuery(query.id, { text: "Delivery failed", show_alert: true }).catch(() => {});
+    }
+  });
+}
 
 async function initDb() {
   await pool.query(`
@@ -101,6 +287,19 @@ async function initDb() {
 
     ALTER TABLE orders
       ADD COLUMN IF NOT EXISTS delivery_expires_at TIMESTAMPTZ;
+
+    ALTER TABLE orders
+      ADD COLUMN IF NOT EXISTS payment_screenshot TEXT DEFAULT '';
+
+    CREATE TABLE IF NOT EXISTS key_inventory (
+      id SERIAL PRIMARY KEY,
+      plan_name TEXT NOT NULL,
+      delivery_key TEXT NOT NULL UNIQUE,
+      used BOOLEAN NOT NULL DEFAULT FALSE,
+      used_order_id INTEGER,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      used_at TIMESTAMPTZ
+    );
   `);
 
   const count = await pool.query(
@@ -461,6 +660,31 @@ app.delete("/api/admin/products/:id", auth, async (req, res) => {
   }
 });
 
+app.post("/api/payment-screenshot", screenshotUpload.single("screenshot"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "Payment screenshot is required" });
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return res.status(500).json({ error: "Cloudinary is not configured" });
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: "matryx-store/payment-screenshots",
+          resource_type: "image"
+        },
+        (error, uploaded) => error ? reject(error) : resolve(uploaded)
+      );
+      stream.end(req.file.buffer);
+    });
+
+    res.json({ ok: true, url: result.secure_url });
+  } catch (e) {
+    console.error("PAYMENT SCREENSHOT ERROR:", e);
+    res.status(500).json({ error: "Could not upload payment screenshot" });
+  }
+});
+
 app.post("/api/orders", async (req, res) => {
   try {
     const storeCheck = await pool.query(
@@ -481,7 +705,8 @@ app.post("/api/orders", async (req, res) => {
     items,
     paymentMethod = "UPI",
     transactionId = "",
-    notes = ""
+    notes = "",
+    paymentScreenshot = ""
   } = req.body;
 
   if (
@@ -584,8 +809,8 @@ app.post("/api/orders", async (req, res) => {
     const order = await client.query(
       `INSERT INTO orders
        (customer_name, customer_phone, customer_address,
-        items, subtotal, payment_method, transaction_id, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        items, subtotal, payment_method, transaction_id, notes, payment_screenshot)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        RETURNING id, created_at`,
       [
         customerName,
@@ -595,15 +820,19 @@ app.post("/api/orders", async (req, res) => {
         subtotal,
         paymentMethod,
         transactionId || "",
-        notes || ""
+        notes || "",
+        paymentScreenshot || ""
       ]
     );
 
     await client.query("COMMIT");
 
+    const createdOrderId = order.rows[0].id;
+    notifyTelegramOrder(createdOrderId);
+
     res.json({
       ok: true,
-      orderId: order.rows[0].id,
+      orderId: createdOrderId,
       subtotal,
       createdAt: order.rows[0].created_at
     });
@@ -742,6 +971,57 @@ app.put("/api/admin/orders/:id", auth, async (req, res) => {
 });
 
 
+app.get("/api/admin/keys", auth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT plan_name, COUNT(*)::int AS total,
+              COUNT(*) FILTER (WHERE used=false)::int AS available
+       FROM key_inventory GROUP BY plan_name ORDER BY plan_name`
+    );
+    res.json(r.rows);
+  } catch (e) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+app.post("/api/admin/keys", auth, async (req, res) => {
+  const planName = String(req.body.planName || "").trim();
+  const keys = Array.isArray(req.body.keys) ? req.body.keys : [];
+  if (!planName || !keys.length) return res.status(400).json({ error: "Plan and keys are required" });
+  try {
+    let added = 0;
+    for (const raw of keys) {
+      const key = String(raw || "").trim();
+      if (!key) continue;
+      const r = await pool.query(
+        `INSERT INTO key_inventory (plan_name, delivery_key) VALUES ($1,$2) ON CONFLICT (delivery_key) DO NOTHING`,
+        [planName, key]
+      );
+      added += r.rowCount;
+    }
+    res.json({ ok: true, added });
+  } catch (e) {
+    console.error("KEY ADD ERROR:", e);
+    res.status(500).json({ error: "Could not add keys" });
+  }
+});
+
+app.post("/api/admin/orders/:id/deliver-key", auth, async (req, res) => {
+  const orderId = Number(req.params.id);
+  if (!Number.isInteger(orderId) || orderId <= 0) {
+    return res.status(400).json({ error: "Invalid order ID" });
+  }
+
+  try {
+    const result = await deliverOrderKey(orderId);
+    if (!result.ok) return res.status(result.status || 500).json({ error: result.error });
+    res.json(result);
+  } catch (e) {
+    console.error("AUTO DELIVERY ERROR:", e);
+    res.status(500).json({ error: "Could not deliver key" });
+  }
+});
+
 app.post("/api/order-history", async (req, res) => {
   const {
     orderId,
@@ -787,21 +1067,7 @@ app.post("/api/order-history", async (req, res) => {
 
     const order = r.rows[0];
 
-    const serverNow = Date.now();
-
-    const expiresAt = order.delivery_expires_at
-      ? new Date(order.delivery_expires_at).getTime()
-      : null;
-
-    const remainingSeconds = expiresAt
-      ? Math.max(0, Math.floor((expiresAt - serverNow) / 1000))
-      : null;
-
-    res.json({
-      ...order,
-      serverNow,
-      remainingSeconds
-    });
+    res.json(order);
 
   } catch (e) {
     console.error("ORDER HISTORY ERROR:", e);

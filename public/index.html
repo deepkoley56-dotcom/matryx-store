@@ -195,6 +195,11 @@ body > *:not(#fire-particles):not(#siteVideoBg):not(#siteVideoShade){
       <input id="cName" placeholder="Full name">
       <input id="cPhone" placeholder="Phone number">
       <input id="cTxn" placeholder="UPI transaction ID (after payment)">
+      <div class="paymentProofBox">
+        <label for="cScreenshot">PAYMENT SCREENSHOT</label>
+        <input id="cScreenshot" type="file" accept="image/*">
+        <small id="cScreenshotStatus">Upload your PhonePe payment screenshot</small>
+      </div>
       <textarea id="cNotes" placeholder="Order notes (optional)"></textarea>
     </div>
     <div class="paybox">
@@ -207,7 +212,7 @@ body > *:not(#fire-particles):not(#siteVideoBg):not(#siteVideoShade){
       </div>
     </div>
     <div class="total">Total: <span id="cartTotal">₹0.00</span></div>
-    <button class="primary big" onclick="placeOrder()">PLACE ORDER + WHATSAPP</button>
+    <button class="primary big" onclick="placeOrder()">PLACE ORDER</button>
     <div id="orderResult"></div>
   </div>
 </section>
@@ -254,8 +259,9 @@ body > *:not(#fire-particles):not(#siteVideoBg):not(#siteVideoShade){
   </div>
   <div id="dashboard" class="hidden">
     <div class="sectionTitle"><h2>Admin Dashboard</h2><button onclick="adminLogout()">LOGOUT</button></div>
-    <div class="adminTabs"><button onclick="adminTab('products')">PRODUCTS</button><button onclick="adminTab('orders')">ORDERS</button><button onclick="adminTab('store')">STORE STATUS</button></div>
+    <div class="adminTabs"><button onclick="adminTab('products')">PRODUCTS</button><button onclick="adminTab('orders')">ORDERS</button><button onclick="adminTab('keys')">KEY INVENTORY</button><button onclick="adminTab('store')">STORE STATUS</button></div>
     <div id="storeAdmin" class="hidden"></div>
+    <div id="keyAdmin" class="hidden"></div>
     <div id="productAdmin"></div><div id="orderAdmin" class="hidden"></div>
   </div>
 </section>
