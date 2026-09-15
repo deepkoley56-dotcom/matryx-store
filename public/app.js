@@ -74,6 +74,13 @@ function openCart() {
 }
 
 function openAdmin() {
+  const overlay = $("storeOfflineOverlay");
+
+  if (overlay) {
+    overlay.classList.add("hidden");
+    overlay.setAttribute("aria-hidden", "true");
+  }
+
   hideViews();
   $("adminView").classList.remove("hidden");
 
