@@ -298,8 +298,12 @@ async function initDb() {
       used BOOLEAN NOT NULL DEFAULT FALSE,
       used_order_id INTEGER,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      used_at TIMESTAMPTZ
+      used_at TIMESTAMPTZ,
+      product_id INTEGER
     );
+
+    ALTER TABLE key_inventory
+      ADD COLUMN IF NOT EXISTS product_id INTEGER;
   `);
 
   const count = await pool.query(
@@ -974,35 +978,193 @@ app.put("/api/admin/orders/:id", auth, async (req, res) => {
 app.get("/api/admin/keys", auth, async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT plan_name, COUNT(*)::int AS total,
-              COUNT(*) FILTER (WHERE used=false)::int AS available
-       FROM key_inventory GROUP BY plan_name ORDER BY plan_name`
+      `SELECT
+         k.id,
+         k.plan_name,
+         k.delivery_key,
+         k.used,
+         k.used_order_id,
+         k.created_at,
+         k.used_at,
+         k.product_id,
+         COALESCE(p.name, 'Unassigned') AS product_name
+       FROM key_inventory k
+       LEFT JOIN products p ON p.id = k.product_id
+       ORDER BY k.id DESC`
     );
+
     res.json(r.rows);
   } catch (e) {
+    console.error("KEY LIST ERROR:", e);
     res.status(500).json({ error: "Database error" });
   }
 });
 
 app.post("/api/admin/keys", auth, async (req, res) => {
+  const productId = req.body.productId == null || req.body.productId === ""
+    ? null
+    : Number(req.body.productId);
+
   const planName = String(req.body.planName || "").trim();
   const keys = Array.isArray(req.body.keys) ? req.body.keys : [];
-  if (!planName || !keys.length) return res.status(400).json({ error: "Plan and keys are required" });
+
+  if (!planName || !keys.length) {
+    return res.status(400).json({
+      error: "Product, plan and keys are required"
+    });
+  }
+
+  if (productId !== null && (!Number.isInteger(productId) || productId <= 0)) {
+    return res.status(400).json({
+      error: "Invalid product"
+    });
+  }
+
   try {
+    if (productId !== null) {
+      const productCheck = await pool.query(
+        "SELECT id FROM products WHERE id=$1",
+        [productId]
+      );
+
+      if (!productCheck.rowCount) {
+        return res.status(404).json({
+          error: "Product not found"
+        });
+      }
+    }
+
     let added = 0;
+
     for (const raw of keys) {
       const key = String(raw || "").trim();
       if (!key) continue;
+
       const r = await pool.query(
-        `INSERT INTO key_inventory (plan_name, delivery_key) VALUES ($1,$2) ON CONFLICT (delivery_key) DO NOTHING`,
-        [planName, key]
+        `INSERT INTO key_inventory
+          (plan_name, delivery_key, product_id)
+         VALUES ($1,$2,$3)
+         ON CONFLICT (delivery_key) DO NOTHING`,
+        [planName, key, productId]
       );
+
       added += r.rowCount;
     }
+
     res.json({ ok: true, added });
   } catch (e) {
     console.error("KEY ADD ERROR:", e);
-    res.status(500).json({ error: "Could not add keys" });
+    res.status(500).json({
+      error: "Could not add keys"
+    });
+  }
+});
+
+app.put("/api/admin/keys/:id", auth, async (req, res) => {
+  const id = Number(req.params.id);
+  const productId = req.body.productId == null || req.body.productId === ""
+    ? null
+    : Number(req.body.productId);
+  const planName = String(req.body.planName || "").trim();
+  const deliveryKey = String(req.body.deliveryKey || "").trim();
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid key ID" });
+  }
+
+  if (!planName || !deliveryKey) {
+    return res.status(400).json({
+      error: "Plan and key are required"
+    });
+  }
+
+  if (productId !== null && (!Number.isInteger(productId) || productId <= 0)) {
+    return res.status(400).json({
+      error: "Invalid product"
+    });
+  }
+
+  try {
+    if (productId !== null) {
+      const productCheck = await pool.query(
+        "SELECT id FROM products WHERE id=$1",
+        [productId]
+      );
+
+      if (!productCheck.rowCount) {
+        return res.status(404).json({
+          error: "Product not found"
+        });
+      }
+    }
+
+    const r = await pool.query(
+      `UPDATE key_inventory
+       SET product_id=$1,
+           plan_name=$2,
+           delivery_key=$3
+       WHERE id=$4
+       RETURNING *`,
+      [productId, planName, deliveryKey, id]
+    );
+
+    if (!r.rowCount) {
+      return res.status(404).json({
+        error: "Key not found"
+      });
+    }
+
+    res.json({
+      ok: true,
+      key: r.rows[0]
+    });
+  } catch (e) {
+    console.error("KEY EDIT ERROR:", e);
+
+    if (e.code === "23505") {
+      return res.status(409).json({
+        error: "This delivery key already exists"
+      });
+    }
+
+    res.status(500).json({
+      error: "Could not edit key"
+    });
+  }
+});
+
+app.delete("/api/admin/keys/:id", auth, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({
+      error: "Invalid key ID"
+    });
+  }
+
+  try {
+    const r = await pool.query(
+      `DELETE FROM key_inventory
+       WHERE id=$1
+       RETURNING id`,
+      [id]
+    );
+
+    if (!r.rowCount) {
+      return res.status(404).json({
+        error: "Key not found"
+      });
+    }
+
+    res.json({
+      ok: true,
+      deletedId: r.rows[0].id
+    });
+  } catch (e) {
+    console.error("KEY DELETE ERROR:", e);
+    res.status(500).json({
+      error: "Could not delete key"
+    });
   }
 });
 

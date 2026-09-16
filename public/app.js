@@ -890,23 +890,402 @@ function parsePlans(text) {
 async function loadKeyAdmin() {
   const box = $("keyAdmin");
   if (!box) return;
+
   try {
-    const rows = await api("/api/admin/keys", { headers: { Authorization: "Bearer " + adminToken } });
+    const [rows, productRows] = await Promise.all([
+      api("/api/admin/keys", {
+        headers: { Authorization: "Bearer " + adminToken }
+      }),
+      api("/api/admin/products", {
+        headers: { Authorization: "Bearer " + adminToken }
+      })
+    ]);
+
+    const productsForKeys = Array.isArray(productRows) ? productRows : [];
+
     box.innerHTML = `
       <div class="productForm">
         <h3>KEY INVENTORY</h3>
-        <p class="planHelp">Add one unused key per line. Delivery uses the customer's selected plan automatically.</p>
-        <input id="keyPlanName" placeholder="Plan name — e.g. 1 Hour">
-        <textarea id="keyList" placeholder="KEY-001
-KEY-002
-KEY-003"></textarea>
+        <p class="planHelp">
+          Select product + duration, then add one key per line.
+        </p>
+
+        <select id="keyProduct" onchange="updateKeyPlans()">
+          <option value="">Select Product</option>
+          ${productsForKeys.map(p => `
+            <option value="${p.id}">${esc(p.name)}</option>
+          `).join("")}
+        </select>
+
+        <select id="keyPlanName">
+          <option value="">Select Duration / Plan</option>
+        </select>
+
+        <textarea id="keyList" placeholder="KEY-001&#10;KEY-002&#10;KEY-003"></textarea>
+
         <button class="primary" onclick="addKeys()">ADD KEYS</button>
       </div>
+
       <div class="productForm">
-        <h3>AVAILABLE KEYS</h3>
-        ${rows.length ? rows.map(r => `<div class="keyStockRow"><b>${esc(r.plan_name)}</b><span>${r.available} available / ${r.total} total</span></div>`).join("") : `<p class="muted">No keys added yet.</p>`}
-      </div>`;
-  } catch (e) { box.innerHTML = `<div class="productForm"><p class="errorText">${esc(e.message)}</p></div>`; }
+        <h3>KEY INVENTORY</h3>
+
+        ${
+          rows.length
+            ? `
+              <div class="keyInventoryTableWrap">
+                <table class="keyInventoryTable">
+                  <thead>
+                    <tr>
+                      <th>PRODUCT</th>
+                      <th>DURATION</th>
+                      <th>KEY</th>
+                      <th>STATUS</th>
+                      <th>ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rows.map(r => `
+                      <tr>
+                        <td>${esc(r.product_name || "Unassigned")}</td>
+                        <td>${esc(r.plan_name || "-")}</td>
+                        <td><code>${esc(r.delivery_key || "")}</code></td>
+                        <td>
+                          <span class="adminProductStatus ${r.used ? "offline" : "online"}">
+                            <span class="statusDot"></span>
+                            ${r.used ? "USED" : "AVAILABLE"}
+                          </span>
+                        </td>
+                        <td>
+                          <div class="keyInventoryActions">
+                            <button type="button" onclick='editKey(${JSON.stringify(r)})'>
+                              EDIT
+                            </button>
+                            <button type="button" class="dangerBtn" onclick="deleteKey(${Number(r.id)})">
+                              DELETE
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              </div>
+            `
+            : `<p class="muted">No keys added yet.</p>`
+        }
+      </div>
+    `;
+
+    window.__keyProducts = productsForKeys;
+    updateKeyPlans();
+
+  } catch (e) {
+    box.innerHTML =
+      `<div class="productForm"><p class="errorText">${esc(e.message)}</p></div>`;
+  }
+}
+
+function updateKeyPlans() {
+  const productEl = $("keyProduct");
+  const planEl = $("keyPlanName");
+
+  if (!productEl || !planEl) return;
+
+  const productId = Number(productEl.value);
+
+  const productsForKeys = Array.isArray(window.__keyProducts)
+    ? window.__keyProducts
+    : [];
+
+  const product = productsForKeys.find(
+    p => Number(p.id) === productId
+  );
+
+  const plans = Array.isArray(product?.plans)
+    ? product.plans
+    : [];
+
+  planEl.innerHTML = `
+    <option value="">Select Duration / Plan</option>
+    ${
+      plans.map(plan => {
+        const name =
+          typeof plan === "string"
+            ? plan
+            : (plan.name || plan.planName || "");
+
+        return name
+          ? `<option value="${escAttr(name)}">${esc(name)}</option>`
+          : "";
+      }).join("")
+    }
+  `;
+}
+
+async function addKeys() {
+  const productEl = $("keyProduct");
+  const planEl = $("keyPlanName");
+  const listEl = $("keyList");
+
+  const productId = productEl?.value
+    ? Number(productEl.value)
+    : null;
+
+  const planName = planEl?.value.trim() || "";
+
+  const raw = (listEl?.value || "")
+    .split("\n")
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  if (!productId) return alert("Product select karo.");
+  if (!planName) return alert("Duration / plan select karo.");
+  if (!raw.length) return alert("Keys enter karo.");
+
+  try {
+    const r = await api("/api/admin/keys", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + adminToken
+      },
+      body: JSON.stringify({
+        productId,
+        planName,
+        keys: raw
+      })
+    });
+
+    alert(`${r.added || 0} keys added.`);
+    loadKeyAdmin();
+
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function editKey(key) {
+  const productValue = prompt(
+    "Product ID:\n\n" +
+    (Array.isArray(window.__keyProducts)
+      ? window.__keyProducts.map(p => `${p.id} = ${p.name}`).join("\n")
+      : "") +
+    `\n\nCurrent: ${key.product_id || "Unassigned"}`,
+    key.product_id || ""
+  );
+
+  if (productValue === null) return;
+
+  const productId = productValue.trim()
+    ? Number(productValue.trim())
+    : null;
+
+  if (
+    productId !== null &&
+    (!Number.isInteger(productId) || productId <= 0)
+  ) {
+    return alert("Invalid product ID.");
+  }
+
+  const planName = prompt(
+    "Duration / Plan:",
+    key.plan_name || ""
+  );
+
+  if (planName === null) return;
+
+  const deliveryKey = prompt(
+    "Delivery Key:",
+    key.delivery_key || ""
+  );
+
+  if (deliveryKey === null) return;
+
+  if (!planName.trim() || !deliveryKey.trim()) {
+    return alert("Plan aur key empty nahi ho sakta.");
+  }
+
+  try {
+    await api(`/api/admin/keys/${Number(key.id)}`, {
+      method: "PUT",
+      headers: {
+        Authorization: "Bearer " + adminToken
+      },
+      body: JSON.stringify({
+        productId,
+        planName: planName.trim(),
+        deliveryKey: deliveryKey.trim()
+      })
+    });
+
+    alert("Key updated.");
+    loadKeyAdmin();
+
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function deleteKey(id) {
+  if (!confirm("Is key ko permanently delete karna hai?")) {
+    return;
+  }
+
+  try {
+    await api(`/api/admin/keys/${Number(id)}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer " + adminToken
+      }
+    });
+
+    alert("Key deleted.");
+    loadKeyAdmin();
+
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function addKeys() {
+  const productEl = $("keyProduct");
+  const planEl = $("keyPlanName");
+  const listEl = $("keyList");
+
+  const productId = productEl?.value
+    ? Number(productEl.value)
+    : null;
+
+  const planName = planEl?.value.trim() || "";
+
+  const raw = (listEl?.value || "")
+    .split("\n")
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  if (!productId) {
+    return alert("Product select karo.");
+  }
+
+  if (!planName) {
+    return alert("Duration / plan select karo.");
+  }
+
+  if (!raw.length) {
+    return alert("Keys enter karo.");
+  }
+
+  try {
+    const r = await api("/api/admin/keys", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + adminToken
+      },
+      body: JSON.stringify({
+        productId,
+        planName,
+        keys: raw
+      })
+    });
+
+    alert(`${r.added || 0} keys added.`);
+    loadKeyAdmin();
+
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function editKey(key) {
+  const productsForKeys = Array.isArray(window.__keyProducts)
+    ? window.__keyProducts
+    : [];
+
+  const currentProductId =
+    key.product_id ? Number(key.product_id) : "";
+
+  const productOptions = productsForKeys.map(p => `
+    <option value="${p.id}" ${Number(p.id) === currentProductId ? "selected" : ""}>
+      ${esc(p.name)}
+    </option>
+  `).join("");
+
+  const productValue = prompt(
+    "Product ID select/edit karo:\n\n" +
+    productsForKeys.map(p => `${p.id} = ${p.name}`).join("\n") +
+    `\n\nCurrent: ${currentProductId || "Unassigned"}`
+  );
+
+  if (productValue === null) return;
+
+  const productId = productValue.trim()
+    ? Number(productValue.trim())
+    : null;
+
+  if (
+    productId !== null &&
+    (!Number.isInteger(productId) || productId <= 0)
+  ) {
+    return alert("Invalid product ID.");
+  }
+
+  const planName = prompt(
+    "Duration / Plan:",
+    key.plan_name || ""
+  );
+
+  if (planName === null) return;
+
+  const deliveryKey = prompt(
+    "Delivery Key:",
+    key.delivery_key || ""
+  );
+
+  if (deliveryKey === null) return;
+
+  if (!planName.trim() || !deliveryKey.trim()) {
+    return alert("Plan aur key empty nahi ho sakta.");
+  }
+
+  try {
+    await api(`/api/admin/keys/${Number(key.id)}`, {
+      method: "PUT",
+      headers: {
+        Authorization: "Bearer " + adminToken
+      },
+      body: JSON.stringify({
+        productId,
+        planName: planName.trim(),
+        deliveryKey: deliveryKey.trim()
+      })
+    });
+
+    alert("Key updated.");
+    loadKeyAdmin();
+
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+async function deleteKey(id) {
+  if (!confirm("Is key ko permanently delete karna hai?")) {
+    return;
+  }
+
+  try {
+    await api(`/api/admin/keys/${Number(id)}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer " + adminToken
+      }
+    });
+
+    alert("Key deleted.");
+    loadKeyAdmin();
+
+  } catch (e) {
+    alert(e.message);
+  }
 }
 
 async function addKeys() {
